@@ -1,6 +1,6 @@
 # BlockFlow
 
-**BlockFlow** is a cloud-agnostic, open-source project designed to process, store, and visualize real-time blockchain transaction data. Leveraging Apache Kafka, Apache Spark, TimescaleDB, and Grafana, it demonstrates modern data engineering practices in a cost-effective and portable manner.
+**BlockFlow** is a cloud-agnostic project designed to process, store, and visualize real-time blockchain transaction data. Leveraging Apache Kafka, Apache Spark, TimescaleDB, and Grafana, it demonstrates modern data engineering practices in a cost-effective and portable manner.
 
 ## Key Features
 
