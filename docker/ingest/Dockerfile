@@ -1,11 +1,20 @@
-FROM python:3
+FROM python:3.12
+
+# Set the working directory
 WORKDIR /app
-RUN pip install --no-cache-dir pipenv
+
+# Install pipenv
+ENV PIPENV_VERBOSITY=-1
+RUN pip install --no-cache-dir --root-user-action=ignore pipenv 
+
+
+# Create and activate a virtual environment
+ENV VIRTUAL_ENV=/app/venv
+RUN python -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+# Copy project files into the container
 COPY . /app
+
+# Install dependencies using pipenv in the virtual environment
 RUN pipenv install --deploy --ignore-pipfile
-
-# Make port 80 available to the world outside this container
-EXPOSE 80
-
-ENV NAME World
-CMD ["pipenv", "run", "python", "app.py"]
