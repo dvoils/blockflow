@@ -1,13 +1,16 @@
 FROM python:3.12
 WORKDIR /app
 
-ENV PIPENV_VERBOSITY=-1
-RUN pip install --no-cache-dir --root-user-action=ignore pipenv
+# Install pipenv
+RUN pip install --no-cache-dir pipenv
 
-ENV VIRTUAL_ENV=/app/venv
-RUN python -m venv $VIRTUAL_ENV
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+# Copy only the necessary files
+COPY Pipfile Pipfile.lock /app/
 
+# Install dependencies based on the Pipfile.lock
+RUN pipenv install --deploy
+
+# Copy the rest of the application
 COPY . /app
-RUN pipenv install --deploy --ignore-pipfile
-CMD ["python", "/app/ingest.py"]
+
+CMD ["pipenv", "run", "python", "/app/ingest.py"]
