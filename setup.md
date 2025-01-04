@@ -30,3 +30,19 @@ pipenv sync
 kubectl apply -f ingest-app-deployment.yaml
 kubectl apply -f ingest-app-service.yaml
 ```
+
+# Test kafka
+```bash
+kubectl run kafka-test-producer \
+  -n kafka \
+  --rm -it \
+  --image=wurstmeister/kafka \
+  --restart=Never \
+  -- /bin/bash
+```
+
+```bash
+/opt/kafka/bin/kafka-console-producer.sh \
+  --broker-list kafka-service:9092 \
+  --topic unconfirmed_transactions
+```
