@@ -46,3 +46,14 @@ kubectl run kafka-test-producer \
   --broker-list kafka-service:9092 \
   --topic unconfirmed_transactions
 ```
+
+```bash
+/opt/kafka/bin/kafka-console-consumer.sh \
+  --bootstrap-server kafka-broker:9092 \
+  --topic unconfirmed_transactions \
+  --from-beginning
+```
+
+```bash
+find / -name kafka-topics.sh 2>/dev/null
+```

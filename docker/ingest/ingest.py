@@ -12,8 +12,9 @@ WEBSOCKET_URL = "wss://ws.blockchain.info/inv"
 
 # Kafka configuration
 kafka_conf = {
-    'bootstrap.servers': "kafka-service.kafka.svc.cluster.local:9092"
+    'bootstrap.servers': "kafka-broker:9092"
 }
+
 
 # Create a Kafka producer
 producer = Producer(**kafka_conf)
