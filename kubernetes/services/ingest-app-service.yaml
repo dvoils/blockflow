@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingest-app-service
+  namespace: kafka
+  labels:
+    app: ingest-app
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080  # The port your application is listening on
+      targetPort: 8080  # This should match the containerPort in the deployment
+  selector:
+    app: ingest-app

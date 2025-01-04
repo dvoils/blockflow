@@ -24,3 +24,9 @@ pipenv shell
 pipenv lock
 pipenv sync
 ```
+
+# Deploy
+```bash
+kubectl apply -f ingest-app-deployment.yaml
+kubectl apply -f ingest-app-service.yaml
+```

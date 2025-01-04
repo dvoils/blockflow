@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingest-app
+  namespace: kafka
+  labels:
+    app: ingest-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ingest-app
+  template:
+    metadata:
+      labels:
+        app: ingest-app
+    spec:
+      containers:
+      - name: ingest-app
+        image: ingest-app:v1  # Update this with your actual Docker image
+        env:
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          value: "kafka-service.kafka.svc.cluster.local:9092"  # Ensure this matches your Kafka service
+        ports:
+        - containerPort: 8080  # You can change this if your app uses a different port
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "200Mi"
+          limits:
+            cpu: "200m"
+            memory: "400Mi"
