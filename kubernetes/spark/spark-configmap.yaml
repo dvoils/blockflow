@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spark-config
+  namespace: spark
+data:
+  spark-defaults.conf: |
+    spark.master=k8s://https://kubernetes.default.svc
+    spark.eventLog.enabled=true
+    spark.eventLog.dir=/tmp/spark-events
+  spark-env.sh: |
+    SPARK_HISTORY_OPTS="-Dspark.history.fs.logDirectory=/tmp/spark-events"

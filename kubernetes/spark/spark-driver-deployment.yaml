@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spark-driver
+  namespace: spark
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spark-driver
+  template:
+    metadata:
+      labels:
+        app: spark-driver
+    spec:
+      containers:
+      - name: spark-driver
+        image: spark-python-app:latest  # Replace with the image name built from the Dockerfile
+        imagePullPolicy: Always
+        command: ["/opt/spark/bin/spark-submit"]
+        args:
+          [
+            "--master", "k8s://https://kubernetes.default.svc",
+            "--deploy-mode", "cluster",
+            "--conf", "spark.kubernetes.container.image=spark-python-app:latest",
+            "local:///app/blockchain_processor.py"
+          ]
+        env:
+        - name: SPARK_EXECUTOR_MEMORY
+          value: "1G"
+        - name: SPARK_EXECUTOR_CORES
+          value: "1"
+        - name: SPARK_DRIVER_MEMORY
+          value: "1G"
+        - name: SPARK_DRIVER_CORES
+          value: "1"
+        ports:
+        - containerPort: 4040
+          name: spark-ui
+      restartPolicy: Always

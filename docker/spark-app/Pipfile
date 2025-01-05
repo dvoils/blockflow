@@ -1,0 +1,18 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[requires]
+python_version = "3.12"
+
+[packages]
+# Add the necessary dependencies for your Spark application
+pyspark = "*"
+kafka-python = "*"
+pyyaml = "*"
+
+[dev-packages]
+# Add development dependencies if needed
+pytest = "*"
+flake8 = "*"
