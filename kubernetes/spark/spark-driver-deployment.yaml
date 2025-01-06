@@ -13,16 +13,17 @@ spec:
       labels:
         app: spark-driver
     spec:
+      serviceAccountName: spark
       containers:
       - name: spark-driver
-        image: spark-python-app:latest  # Replace with the image name built from the Dockerfile
-        imagePullPolicy: Always
+        image: spark-app:latest
+        imagePullPolicy: Never
         command: ["/opt/spark/bin/spark-submit"]
         args:
           [
             "--master", "k8s://https://kubernetes.default.svc",
             "--deploy-mode", "cluster",
-            "--conf", "spark.kubernetes.container.image=spark-python-app:latest",
+            "--conf", "spark.kubernetes.container.image=spark-app:latest",
             "local:///app/blockchain_processor.py"
           ]
         env:
@@ -37,4 +38,11 @@ spec:
         ports:
         - containerPort: 4040
           name: spark-ui
-      restartPolicy: Always
+        resources:
+          limits:
+            cpu: 1
+            memory: 2Gi
+          requests:
+            cpu: 0.5
+            memory: 1Gi
+

@@ -35,6 +35,7 @@ kubectl apply -f ingest-app-service.yaml
 kubectl rollout status deployment/ingest-app -n kafka
 ```
 
+
 # Test kafka
 ```bash
 kubectl run kafka-test-producer \
@@ -63,3 +64,9 @@ kubectl run kafka-test-producer \
 find / -name kafka-topics.sh 2>/dev/null
 ```
 
+# Delete Pod Deployment
+```bash
+kubectl delete deployment spark-driver -n spark
+```
+
+kubectl create serviceaccount spark -n spark
