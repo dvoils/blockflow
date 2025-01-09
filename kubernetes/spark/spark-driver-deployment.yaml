@@ -18,13 +18,14 @@ spec:
       - name: spark-driver
         image: spark-app:latest
         imagePullPolicy: Never
-        command: ["/opt/spark/bin/spark-submit"]
+        command: ["/opt/bitnami/spark/bin/spark-submit"]
         args:
           [
             "--master", "k8s://https://kubernetes.default.svc",
             "--deploy-mode", "cluster",
             "--conf", "spark.kubernetes.container.image=spark-app:latest",
-            "local:///app/blockchain_processor.py"
+            "--conf", "spark.kubernetes.namespace=spark",
+            "local:///opt/spark/app/spark_app.py"
           ]
         env:
         - name: SPARK_EXECUTOR_MEMORY
@@ -35,6 +36,8 @@ spec:
           value: "1G"
         - name: SPARK_DRIVER_CORES
           value: "1"
+        - name: SPARK_SUBMIT_OPTS
+          value: "-Dspark.jars.ivy=/tmp/.ivy2"
         ports:
         - containerPort: 4040
           name: spark-ui
@@ -45,4 +48,14 @@ spec:
           requests:
             cpu: 0.5
             memory: 1Gi
-
+        volumeMounts:
+        - name: spark-conf-volume-driver
+          mountPath: /opt/spark/conf
+        - name: ivy-cache
+          mountPath: /tmp/.ivy2
+      volumes:
+      - name: spark-conf-volume-driver
+        configMap:
+          name: spark-drv-config
+      - name: ivy-cache
+        emptyDir: {}

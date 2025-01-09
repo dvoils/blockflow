@@ -13,6 +13,8 @@ fi
 
 # List of deployment files to apply
 DEPLOYMENT_FILES=(
+  "kafka-cluster-role.yaml"
+  "kafka-cluster-role-binding.yaml"
   "spark-configmap.yaml"
   "spark-event-logs-pvc.yaml"
   "spark-driver-service.yaml"
@@ -20,6 +22,8 @@ DEPLOYMENT_FILES=(
   "spark-executor-service.yaml"
   "spark-executor-statefulset.yaml"
   "spark-history-server.yaml"
+  "spark-role.yaml"
+  "spark-role-binding.yaml"
 )
 
 # Apply each deployment file

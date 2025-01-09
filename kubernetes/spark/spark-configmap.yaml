@@ -1,12 +1,14 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: spark-config
+  name: spark-drv-config
   namespace: spark
 data:
-  spark-defaults.conf: |
-    spark.master=k8s://https://kubernetes.default.svc
-    spark.eventLog.enabled=true
-    spark.eventLog.dir=/tmp/spark-events
-  spark-env.sh: |
-    SPARK_HISTORY_OPTS="-Dspark.history.fs.logDirectory=/tmp/spark-events"
+  spark.properties: |
+    spark.kubernetes.namespace=spark
+    spark.kubernetes.container.image=spark-app:latest
+    spark.executor.instances=2
+    spark.executor.memory=1G
+    spark.driver.memory=1G
+    spark.jars.ivy=/tmp/.ivy2  # Absolute path for Ivy cache
+    spark.local.dir=/tmp       # Writable directory for temporary files
