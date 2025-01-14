@@ -17,7 +17,8 @@ spec:
     spec:
       containers:
       - name: ingest-app
-        image: ingest-app:v2  # Update this with your actual Docker image
+        image: ingest-app:latest  # Update this with your actual Docker image
+        imagePullPolicy: IfNotPresent
         env:
         - name: KAFKA_BOOTSTRAP_SERVERS
           value: "kafka-broker.kafka.svc.cluster.local:9092"  # Ensure this matches your Kafka service

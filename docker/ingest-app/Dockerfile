@@ -13,4 +13,4 @@ RUN pipenv install --deploy
 # Copy the rest of the application
 COPY . /app
 
-CMD ["pipenv", "run", "python", "/app/ingest.py"]
+CMD ["pipenv", "run", "python", "/app/ingest_app.py"]
