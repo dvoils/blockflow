@@ -25,17 +25,22 @@ def acked(err, msg):
     else:
         logging.info(f"Message delivered to {msg.topic()} [{msg.partition()}]")
 
-async def subscribe_to_unconfirmed_transactions():
-    async with websockets.connect(WEBSOCKET_URL) as websocket:
-        # Subscribe to unconfirmed transactions
-        await websocket.send(json.dumps({"op": "unconfirmed_sub"}))
-        print("Subscribed to unconfirmed transactions")
-        logging.info("Subscribed to unconfirmed transactions")
+import asyncio
+import websockets
 
-        # Listen for messages indefinitely
-        while True:
-            message = await websocket.recv()
-            process_message(message)
+async def subscribe_to_unconfirmed_transactions():
+    while True:
+        try:
+            async with websockets.connect("ws://your-websocket-url") as websocket:
+                while True:
+                    message = await websocket.recv()
+                    print(f"Received message: {message}")
+        except websockets.ConnectionClosedError as e:
+            print(f"WebSocket closed: {e}")
+            await asyncio.sleep(5)  # Wait before retrying
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            await asyncio.sleep(5)  # Wait before retrying
 
 def process_message(message):
     logging.info(f"Raw message: {message}")

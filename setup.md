@@ -4,9 +4,9 @@
 ```bash
 eval $(minikube docker-env)
 ```
-## Build
+## Build Docker Images
 ```bash
-docker build -t ingest-app:v1 .
+docker build -t ingest-app:latest .
 docker build -t spark-app:latest .
 ```
 
@@ -28,22 +28,35 @@ pipenv lock
 pipenv sync
 ```
 
-# Deploy
+# Deploy Kafka
++ Deploy in this order.
++ Verify the pod is up before deploying the next step
+
 ```bash
+kubectl apply -f kafka-namespace.yaml
+
+kubectl apply -f zookeeper-deployment.yaml
+kubectl apply -f zookeeper-service.yaml
+
+kubectl apply -f kafka-deployment.yaml
+kubectl apply -f kafka-service.yaml
+
 kubectl apply -f ingest-app-deployment.yaml
 kubectl apply -f ingest-app-service.yaml
-kubectl apply -f spark-driver-deployment.yaml
-kubectl rollout status deployment/ingest-app -n kafka
+
+kubectl get pods -n kafka
+```
+# Deploy Spark
+```bash
+kubectl apply -f spark-namespace.yaml
+kubectl apply -f spark-app-job.yaml
+
 kubectl get pods -n spark
-
-kubectl apply -f spark-app-deployment.yaml
-kubectl delete deployment spark-app -n spark
-
-
 ```
 
 
 # Test kafka
+## Create test pod
 ```bash
 kubectl run kafka-test-producer \
   -n kafka \
@@ -53,12 +66,6 @@ kubectl run kafka-test-producer \
   -- /bin/bash
 ```
 
-## Producer
-```bash
-/opt/kafka/bin/kafka-console-producer.sh \
-  --broker-list kafka-service:9092 \
-  --topic unconfirmed_transactions
-```
 ## Consumer
 ```bash
 /opt/kafka/bin/kafka-console-consumer.sh \
@@ -66,54 +73,10 @@ kubectl run kafka-test-producer \
   --topic unconfirmed_transactions \
   --from-beginning
 ```
+
 ## Find Tools
 ```bash
 find / -name kafka-topics.sh 2>/dev/null
 ```
 
-# Delete Pod/Deployment
-```bash
-kubectl delete pod spark-driver-749fb8cb44-knqm7 -n spark
-kubectl delete deployment spark-driver -n spark
-```
 
-kubectl create serviceaccount spark -n spark
-
-kubectl rollout restart deployment spark-driver -n spark
-
-
-docker run -it spark-app:latest ls /opt/spark/bin/spark-submit
-docker run -it spark-app:latest bash
-
-
-kubectl exec -it <POD_NAME> -n spark -- /bin/bash
-
-eval $(minikube docker-env)  # Ensure Minikube is using your local Docker
-kubectl rollout restart deployment spark-driver -n spark
-
-docker run -it --name spark-debug bitnami/spark:3.5.4 /bin/bash
-
-
-kubectl describe pod spark-driver-749fb8cb44-89n8s -n spark
-
-
-
-kubectl logs spark-driver-749fb8cb44-89n8s -n spark
-
-kubectl auth can-i patch services --as=system:serviceaccount:spark:spark -n spark
-
-kubectl delete pod -n spark $(kubectl get pods -n spark | grep 'ContainerCannotRun' | awk '{print $1}')
-
-kubectl get configmap -n spark
-
-kubectl describe configmap spark-drv-66fa1c9441fc28ea-conf-map -n spark
-
-kubectl delete configmap spark-drv-e0b3e8944201db0b-conf-map -n spark
-
-
-/opt/bitnami/spark/bin/spark-submit \
-spark-submit \
-  --master local \
-  --conf spark.jars.ivy=/nonexistent \
-  --jars local:///opt/spark/jars/hadoop-aws-3.3.4.jar,local:///opt/spark/jars/aws-java-sdk-bundle-1.11.1026.jar \
-  local:///opt/spark/app/spark_app.py
