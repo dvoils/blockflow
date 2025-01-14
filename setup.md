@@ -35,6 +35,11 @@ kubectl apply -f ingest-app-service.yaml
 kubectl apply -f spark-driver-deployment.yaml
 kubectl rollout status deployment/ingest-app -n kafka
 kubectl get pods -n spark
+
+kubectl apply -f spark-app-deployment.yaml
+kubectl delete deployment spark-app -n spark
+
+
 ```
 
 
@@ -107,6 +112,7 @@ kubectl delete configmap spark-drv-e0b3e8944201db0b-conf-map -n spark
 
 
 /opt/bitnami/spark/bin/spark-submit \
+spark-submit \
   --master local \
   --conf spark.jars.ivy=/nonexistent \
   --jars local:///opt/spark/jars/hadoop-aws-3.3.4.jar,local:///opt/spark/jars/aws-java-sdk-bundle-1.11.1026.jar \
