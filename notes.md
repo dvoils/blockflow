@@ -1,5 +1,18 @@
+
+docker run -it --rm spark-app:latest /bin/bash
+spark-submit /opt/app/app.py
+
+docker rmi d188efcaf113
+Error response from daemon: conflict: unable to delete d188efcaf113 (must be forced) - image is being used by stopped container 6e95f227fefc
+
+docker ps -a
+
+docker stop 6e95f227fefc
+
+
 kubectl delete deployment spark-app -n spark
 
+docker rmi d188efcaf113
 
 
 # Delete Pod/Deployment
@@ -51,4 +64,9 @@ spark-submit \
   --master local \
   --conf spark.jars.ivy=/nonexistent \
   --jars local:///opt/spark/jars/hadoop-aws-3.3.4.jar,local:///opt/spark/jars/aws-java-sdk-bundle-1.11.1026.jar \
+  local:///opt/spark/app/spark_app.py
+
+
+spark-submit \
+  --master local \
   local:///opt/spark/app/spark_app.py

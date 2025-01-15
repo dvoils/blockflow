@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spark-app
+  namespace: spark
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spark-app
+  template:
+    metadata:
+      labels:
+        app: spark-app
+    spec:
+      containers:
+      - name: spark-app
+        image: spark-app:latest
+        imagePullPolicy: IfNotPresent
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "0.5"
+          limits:
+            memory: "1Gi"
+            cpu: "1"
+        ports:
+        - containerPort: 4040  # Spark UI port
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 4040
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 4040
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      restartPolicy: Always

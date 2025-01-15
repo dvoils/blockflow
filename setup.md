@@ -50,6 +50,8 @@ kubectl get pods -n kafka
 ```bash
 kubectl apply -f spark-namespace.yaml
 kubectl apply -f spark-app-job.yaml
+kubectl apply -f spark-app-deployment.yaml
+kubectl apply -f spark-app-service.yaml
 
 kubectl get pods -n spark
 ```

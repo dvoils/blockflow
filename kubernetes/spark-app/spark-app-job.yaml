@@ -4,6 +4,7 @@ metadata:
   name: spark-app-job
   namespace: spark
 spec:
+  ttlSecondsAfterFinished: 3600  # Keep pods for 1 hour after job completion
   template:
     metadata:
       labels:
