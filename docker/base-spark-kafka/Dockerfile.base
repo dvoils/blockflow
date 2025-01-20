@@ -1,0 +1,25 @@
+# Use the official Spark Py image
+FROM apache/spark-py:v3.4.0
+
+# Switch to root to modify directories
+USER root
+
+# Set working directory for downloading JARs
+WORKDIR /opt/spark/jars
+
+# Download Kafka integration JARs directly to Spark's jars directory
+RUN wget https://repo1.maven.org/maven2/org/apache/spark/spark-sql-kafka-0-10_2.12/3.4.0/spark-sql-kafka-0-10_2.12-3.4.0.jar && \
+    wget https://repo1.maven.org/maven2/org/apache/kafka/kafka-clients/3.4.0/kafka-clients-3.4.0.jar
+
+# Ensure permissions are set correctly
+RUN chmod -R 777 /opt/spark/jars
+
+# Add Minikube's CA certificate to the trust store
+COPY minikube-ca.crt /usr/local/share/ca-certificates/
+RUN update-ca-certificates
+
+# Switch back to the default non-root user
+USER 185
+
+# Base image is ready to be extended
+CMD ["python", "--version"]
