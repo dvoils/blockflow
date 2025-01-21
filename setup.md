@@ -100,6 +100,14 @@ kubectl create secret generic spark-token-secret \
     --from-literal=token="${K8S_TOKEN}"
 kubectl describe secret spark-token-secret -n spark
 ```
+## Check Service Account and Roles
+```bash
+kubectl get serviceaccounts -n spark
+kubectl get roles -n spark
+kubectl get clusterroles
+kubectl get clusterrolebindings
+```
+
 ## Create Job or Deployment
 ```bash
 kubectl apply -f spark-app-job.yaml

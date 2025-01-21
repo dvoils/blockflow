@@ -22,6 +22,7 @@ CMD ["spark-submit", "--master", "k8s://https://192.168.49.2:8443", \
      "--conf", "spark.executor.instances=1", \
      "--conf", "spark.executor.memory=2g", \
      "--conf", "spark.executor.cores=1", \
+     "--conf", "spark.kubernetes.driver.request.retries=3", \
      "--conf", "spark.kubernetes.file.upload.path=file:///tmp/spark-upload", \
      "--conf", "spark.kubernetes.authenticate.driver.serviceAccountName=spark", \
      "--conf", "spark.kubernetes.authenticate.caCertFile=/etc/ssl/certs/ca-certificates.crt", \
