@@ -38,4 +38,10 @@ spec:
             port: 4040
           initialDelaySeconds: 10
           periodSeconds: 5
+        env:  # Add the token as an environment variable
+        - name: K8S_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: spark-token-secret  # Name of the Kubernetes Secret
+              key: token               # Key within the Secret
       restartPolicy: Always
