@@ -14,9 +14,18 @@ RUN wget https://repo1.maven.org/maven2/org/apache/spark/spark-sql-kafka-0-10_2.
 # Ensure permissions are set correctly
 RUN chmod -R 777 /opt/spark/jars
 
-# Add Minikube's CA certificate to the trust store
+# Copy Minikube's CA certificate into the container
 COPY minikube-ca.crt /usr/local/share/ca-certificates/
+
+# Update the system CA trust store to include the Minikube CA
 RUN update-ca-certificates
+
+# Add Minikube's CA certificate to the JVM trust store
+RUN keytool -importcert -trustcacerts \
+    -file /usr/local/share/ca-certificates/minikube-ca.crt \
+    -alias minikube-ca \
+    -keystore /opt/java/openjdk/lib/security/cacerts \
+    -storepass changeit -noprompt
 
 # Switch back to the default non-root user
 USER 185
