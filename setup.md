@@ -1,15 +1,27 @@
 
-# Docker
-## Setup Minikube 
+# Minikube
+## Start Minikube
 ```bash
-eval $(minikube docker-env)
-```
-## Build Docker Images
-```bash
-docker build -t ingest-app:latest .
-docker build -t spark-app:latest .
+minikube config set memory 6144
+minikube config set cpus 4
+minikube start
+minikube config view
 ```
 
+## Use Minikube's Docker Repository
+```bash
+eval $(minikube docker-env)
+docker info | grep "Name:"
+```
+
+## Export Minikube's CA Certificate
++ Get the certification, in this case using minikube's
+```bash
+minikube ssh cat /var/lib/minikube/certs/ca.crt > minikube-ca.crt
+```
++ Put the certification into `docker/base-spark-app`
+
+# Docker
 ## Using BuildKit
 It seems that docker comes installed with the legacy builder for some reason.
 
@@ -21,12 +33,21 @@ DEPRECATED: The legacy builder is deprecated and will be removed in a future rel
 sudo apt install docker-buildx
 ```
 
+## Build Docker Images
+```bash
+docker build -t spark-with-kafka:3.4.0 -f Dockerfile.base .
+docker build -t ingest-app:latest .
+docker build -t spark-app:latest .
+```
+
 # Update Pipenv
 ```bash
 pipenv shell
 pipenv lock
 pipenv sync
 ```
+
+
 
 # Deploy Kafka
 + Deploy in this order.
@@ -46,9 +67,41 @@ kubectl apply -f ingest-app-service.yaml
 
 kubectl get pods -n kafka
 ```
+
 # Deploy Spark
+## Create Spark namespace
 ```bash
 kubectl apply -f spark-namespace.yaml
+```
+
+## Create Service Account
+```bash
+#kubectl create serviceaccount spark -n spark
+kubectl apply -f serviceaccount.yaml
+```
+
+## Bind the ServiceAccount to a Role
+```bash
+kubectl apply -f role.yaml
+kubectl apply -f rolebinding.yaml
+```
+## Create a Token Secret
+```bash
+kubectl apply -f spark-token.yaml
+kubectl get secrets -n spark
+kubectl describe secret spark-token -n spark
+```
+
+## Create Spark Token Secret
+```bash
+K8S_TOKEN=$(kubectl get secret spark-token -n spark -o jsonpath='{.data.token}' | base64 --decode)
+kubectl create secret generic spark-token-secret \
+    -n spark \
+    --from-literal=token="${K8S_TOKEN}"
+kubectl describe secret spark-token-secret -n spark
+```
+## Create Job or Deployment
+```bash
 kubectl apply -f spark-app-job.yaml
 kubectl apply -f spark-app-deployment.yaml
 kubectl apply -f spark-app-service.yaml

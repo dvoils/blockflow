@@ -13,6 +13,7 @@ spec:
       labels:
         app: spark-app
     spec:
+      serviceAccountName: spark
       containers:
       - name: spark-app
         image: spark-app:latest
