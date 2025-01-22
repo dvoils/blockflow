@@ -1,20 +1,13 @@
 from pyspark.sql import SparkSession
 
-spark = SparkSession.builder.appName("KafkaSparkStreaming").getOrCreate()
+# Create a Spark session
+spark = SparkSession.builder.appName("MinimalApp").getOrCreate()
 
-# Read from Kafka
-kafka_df = spark.readStream.format("kafka") \
-    .option("kafka.bootstrap.servers", "kafka:9092") \
-    .option("subscribe", "my-topic") \
-    .load()
+# Create a dummy streaming DataFrame that generates rows at a constant rate
+df = spark.readStream.format("rate").option("rowsPerSecond", 1).load()
 
-# Process the data
-processed_df = kafka_df.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)")
+# Write the streaming data to the console
+query = df.writeStream.format("console").start()
 
-# Write the processed data to the console or a sink
-query = processed_df.writeStream \
-    .outputMode("append") \
-    .format("console") \
-    .start()
-
+# Wait for the streaming query to terminate
 query.awaitTermination()
