@@ -1,48 +1,35 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: spark-app
+  name: spark-streaming-app
   namespace: spark
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: spark-app
+      app: spark-streaming-app
   template:
     metadata:
       labels:
-        app: spark-app
+        app: spark-streaming-app
     spec:
       serviceAccountName: spark
       containers:
-      - name: spark-app
+      - name: spark-streaming-app
         image: spark-app:latest
         imagePullPolicy: IfNotPresent
         resources:
           requests:
-            memory: "512Mi"
+            memory: "1Gi"
             cpu: "0.5"
           limits:
-            memory: "1Gi"
+            memory: "2Gi"
             cpu: "1"
         ports:
-        - containerPort: 4040  # Spark UI port
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 4040
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 4040
-          initialDelaySeconds: 10
-          periodSeconds: 5
-        env:  # Add the token as an environment variable
+        - containerPort: 4040
+        env:
         - name: K8S_TOKEN
           valueFrom:
             secretKeyRef:
-              name: spark-token-secret  # Name of the Kubernetes Secret
-              key: token               # Key within the Secret
-      restartPolicy: Always
+              name: spark-token-secret
+              key: token

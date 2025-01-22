@@ -1,41 +1,20 @@
-import time
-import logging
 from pyspark.sql import SparkSession
-from signal import signal, SIGINT
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+spark = SparkSession.builder.appName("KafkaSparkStreaming").getOrCreate()
 
-# Graceful termination setup
-keep_running = True
+# Read from Kafka
+kafka_df = spark.readStream.format("kafka") \
+    .option("kafka.bootstrap.servers", "kafka:9092") \
+    .option("subscribe", "my-topic") \
+    .load()
 
-def handle_signal(signal_received, frame):
-    global keep_running
-    logger.info("Termination signal received. Stopping the application...")
-    keep_running = False
+# Process the data
+processed_df = kafka_df.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)")
 
-signal(SIGINT, handle_signal)
+# Write the processed data to the console or a sink
+query = processed_df.writeStream \
+    .outputMode("append") \
+    .format("console") \
+    .start()
 
-# Create a Spark session
-spark = SparkSession.builder.appName("SimpleApp").getOrCreate()
-
-try:
-    while keep_running:
-        # Create and display a DataFrame
-        data = [("Hello, PySpark!",)]
-        df = spark.createDataFrame(data, ["message"])
-        df.show()
-
-        # Log the iteration
-        logger.info("Iteration completed. Sleeping for 10 seconds...")
-
-        # Wait before the next iteration
-        time.sleep(10)
-except Exception as e:
-    logger.error("An error occurred", exc_info=e)
-    raise
-finally:
-    # Stop the Spark session when exiting
-    logger.info("Stopping the Spark session.")
-    spark.stop()
+query.awaitTermination()

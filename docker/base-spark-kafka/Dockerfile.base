@@ -27,6 +27,16 @@ RUN keytool -importcert -trustcacerts \
     -keystore /opt/java/openjdk/lib/security/cacerts \
     -storepass changeit -noprompt
 
+# Ensure the /opt/spark/conf directory exists before copying files
+RUN mkdir -p /opt/spark/conf
+
+# Copy external configuration files to the container
+COPY spark-defaults.conf /opt/spark/conf/spark-defaults.conf
+COPY log4j.properties /opt/spark/conf/log4j.properties
+
+# Ensure permissions for configuration files
+RUN chmod -R 777 /opt/spark/conf
+
 # Switch back to the default non-root user
 USER 185
 

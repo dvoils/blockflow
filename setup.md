@@ -21,6 +21,9 @@ minikube ssh cat /var/lib/minikube/certs/ca.crt > minikube-ca.crt
 ```
 + Put the certification into `docker/base-spark-app`
 
+## Determine Minikube's IP
+minikube ip
+
 # Docker
 ## Using BuildKit
 It seems that docker comes installed with the legacy builder for some reason.
