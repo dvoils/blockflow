@@ -8,8 +8,10 @@ USER root
 WORKDIR /opt/spark/jars
 
 # Download Kafka integration JARs directly to Spark's jars directory
-RUN wget https://repo1.maven.org/maven2/org/apache/spark/spark-sql-kafka-0-10_2.12/3.4.0/spark-sql-kafka-0-10_2.12-3.4.0.jar && \
-    wget https://repo1.maven.org/maven2/org/apache/kafka/kafka-clients/3.4.0/kafka-clients-3.4.0.jar
+RUN wget https://repo1.maven.org/maven2/org/apache/spark/spark-sql-kafka-0-10_2.12/3.4.0/spark-sql-kafka-0-10_2.12-3.4.0.jar
+RUN wget https://repo1.maven.org/maven2/org/apache/kafka/kafka-clients/3.4.0/kafka-clients-3.4.0.jar
+RUN wget https://repo1.maven.org/maven2/org/apache/commons/commons-pool2/2.11.1/commons-pool2-2.11.1.jar
+RUN wget https://repo1.maven.org/maven2/org/apache/spark/spark-token-provider-kafka-0-10_2.12/3.4.0/spark-token-provider-kafka-0-10_2.12-3.4.0.jar
 
 # Ensure permissions are set correctly
 RUN chmod -R 777 /opt/spark/jars
@@ -36,6 +38,9 @@ COPY log4j.properties /opt/spark/conf/log4j.properties
 
 # Ensure permissions for configuration files
 RUN chmod -R 777 /opt/spark/conf
+
+# Set SPARK_CLASSPATH to include all JARs in the directory
+ENV SPARK_CLASSPATH="/opt/spark/jars/*"
 
 # Switch back to the default non-root user
 USER 185

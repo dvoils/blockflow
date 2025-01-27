@@ -33,3 +33,17 @@ spec:
             secretKeyRef:
               name: spark-token-secret
               key: token
+        - name: SPARK_HOME
+          value: "/opt/spark"
+        volumeMounts:
+        - mountPath: "/mnt/spark/checkpoints"
+          name: spark-checkpoint-volume
+        - mountPath: "/opt/spark/conf"  # Mount the config directory to the expected location
+          name: spark-config-volume
+      volumes:
+      - name: spark-checkpoint-volume
+        persistentVolumeClaim:
+          claimName: spark-checkpoint-pvc
+      - name: spark-config-volume
+        configMap:
+          name: spark-config  # Reference the ConfigMap

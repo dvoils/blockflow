@@ -23,10 +23,10 @@ spec:
         - name: KAFKA_BROKER_ID
           value: "1"
         - name: KAFKA_ZOOKEEPER_CONNECT
-          value: "zookeeper.kafka:2181"  # Updated to match the correct service name
+          value: zookeeper.kafka:2181  # Correct service name for Zookeeper
         - name: KAFKA_LISTENERS
-          value: "PLAINTEXT://:9092"
+          value: PLAINTEXT://0.0.0.0:9092  # Listen on all interfaces
         - name: KAFKA_ADVERTISED_LISTENERS
-          value: "PLAINTEXT://kafka-broker:9092"
+          value: PLAINTEXT://kafka-broker.kafka.svc.cluster.local:9092  # FQDN for cross-namespace access
         ports:
         - containerPort: 9092

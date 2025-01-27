@@ -79,14 +79,16 @@ kubectl apply -f spark-namespace.yaml
 
 ## Create Service Account
 ```bash
-#kubectl create serviceaccount spark -n spark
-kubectl apply -f serviceaccount.yaml
+kubectl create serviceaccount spark -n spark
+# kubectl apply -f serviceaccount.yaml
 ```
 
 ## Bind the ServiceAccount to a Role
 ```bash
 kubectl apply -f role.yaml
 kubectl apply -f rolebinding.yaml
+kubectl -n spark --as="system:serviceaccount:spark:spark" auth can-i deletecollection configmaps
++ should return - yes
 ```
 ## Create a Token Secret
 ```bash
@@ -103,12 +105,28 @@ kubectl create secret generic spark-token-secret \
     --from-literal=token="${K8S_TOKEN}"
 kubectl describe secret spark-token-secret -n spark
 ```
+
+## Create Kubernetes IP Config Map
+```bash
+kubectl create configmap spark-config \
+  --from-literal=SPARK_K8S_API_SERVER=$(minikube ip) \
+  --from-file=/home/dvoils/Desktop/repos/blockflow/docker/base-spark-kafka/spark-defaults.conf \
+  --from-file=/home/dvoils/Desktop/repos/blockflow/docker/base-spark-kafka/log4j.properties \
+  -n spark
+```
+
 ## Check Service Account and Roles
 ```bash
 kubectl get serviceaccounts -n spark
 kubectl get roles -n spark
 kubectl get clusterroles
 kubectl get clusterrolebindings
+```
+
+## Create Persistent Checkpoint Volume
+```bash
+kubectl apply -f spark-checkpoint-volume.yaml
+kubectl apply -f spark-checkpoint-claim.yaml
 ```
 
 ## Create Job or Deployment
