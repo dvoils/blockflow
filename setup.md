@@ -123,6 +123,13 @@ kubectl get clusterroles
 kubectl get clusterrolebindings
 ```
 
+## Create Checkpoint Directory in Minikube
+```bash
+minikube ssh
+sudo mkdir -p /mnt/spark/checkpoints
+sudo chmod -R 777 /mnt/spark/checkpoints
+```
+
 ## Create Persistent Checkpoint Volume
 ```bash
 kubectl apply -f spark-checkpoint-volume.yaml
