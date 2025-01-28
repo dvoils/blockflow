@@ -13,7 +13,7 @@ spec:
       labels:
         app: spark-streaming-app
     spec:
-      serviceAccountName: spark
+      serviceAccountName: spark  # Ensure the service account is correctly set
       containers:
       - name: spark-streaming-app
         image: spark-app:latest
@@ -26,7 +26,7 @@ spec:
             memory: "2Gi"
             cpu: "1"
         ports:
-        - containerPort: 4040
+        - containerPort: 4040  # Spark UI port
         env:
         - name: K8S_TOKEN
           valueFrom:
@@ -36,14 +36,18 @@ spec:
         - name: SPARK_HOME
           value: "/opt/spark"
         volumeMounts:
-        - mountPath: "/mnt/spark/checkpoints"
+        - mountPath: "/mnt/spark/checkpoints"  # Checkpoint directory
           name: spark-checkpoint-volume
-        - mountPath: "/opt/spark/conf"  # Mount the config directory to the expected location
+        - mountPath: "/opt/spark/conf"  # Spark configuration directory
           name: spark-config-volume
+        - mountPath: "/tmp/spark-upload"  # Spark file upload directory
+          name: spark-upload-volume
       volumes:
       - name: spark-checkpoint-volume
         persistentVolumeClaim:
-          claimName: spark-checkpoint-pvc
+          claimName: spark-checkpoint-pvc  # Reference the PVC for checkpoints
       - name: spark-config-volume
         configMap:
-          name: spark-config  # Reference the ConfigMap
+          name: spark-config  # Reference the ConfigMap for Spark configuration
+      - name: spark-upload-volume
+        emptyDir: {}  # Temporary directory for Spark file uploads

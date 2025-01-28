@@ -12,3 +12,4 @@ spec:
   selector:
     matchLabels:
       type: local
+  storageClassName: ""  # Explicitly set to empty string to use the manual PV
