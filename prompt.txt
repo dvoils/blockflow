@@ -1,0 +1,657 @@
+dvoils@desktop:~/Desktop/repos/blockflow$ cat docker/ingest-app/Dockerfile
+FROM python:3.12
+WORKDIR /app
+
+# Install pipenv
+RUN pip install --no-cache-dir pipenv
+
+# Copy only the necessary files
+COPY Pipfile Pipfile.lock /app/
+
+# Install dependencies based on the Pipfile.lock
+RUN pipenv install --deploy
+
+# Copy the rest of the application
+COPY . /app
+
+CMD ["pipenv", "run", "python", "/app/ingest_app.py"]dvoils@desktop:~/Desktop/repos/blockflow$ 
+dvoils@desktop:~/Desktop/repos/blockflow$ cat docker/ingest-app/ingest_app.py
+import json
+import time
+import random
+from confluent_kafka import Producer
+
+# Kafka configuration
+kafka_conf = {
+    'bootstrap.servers': "kafka-broker:9092"  # Replace with your broker address
+}
+
+# Create a Kafka producer
+producer = Producer(**kafka_conf)
+
+def acked(err, msg):
+    if err is not None:
+        print(f"Failed to deliver message: {err}")
+    else:
+        print(f"Message delivered to {msg.topic()} [{msg.partition()}]")
+
+def generate_fake_transaction():
+    """Generate a fake Bitcoin transaction."""
+    transaction = {
+        "hash": f"tx-{random.randint(1000, 9999)}",
+        "tx_index": random.randint(1000, 9999),
+        "time": int(time.time()),
+        "inputs": [
+            {
+                "input_address": f"addr-{random.randint(1, 1000)}",
+                "input_value": random.randint(1, 10000)
+            }
+        ],
+        "outputs": [
+            {
+                "output_address": f"addr-{random.randint(1, 1000)}",
+                "output_value": random.randint(1, 10000)
+            }
+        ]
+    }
+    return transaction
+
+def produce_fake_data(topic, interval=1):
+    """Produce fake transactions to the specified Kafka topic."""
+    try:
+        while True:
+            transaction = generate_fake_transaction()
+            transaction_json = json.dumps(transaction)
+            producer.produce(topic, value=transaction_json, callback=acked)
+            producer.poll(0)  # Trigger delivery reports
+            print(f"Produced transaction: {transaction}")
+            time.sleep(interval)
+    except KeyboardInterrupt:
+        print("Stopping producer...")
+    finally:
+        producer.flush()  # Ensure all messages are sent
+
+if __name__ == "__main__":
+    topic = "unconfirmed_transactions"
+    produce_fake_data(topic, interval=1)  # Send a message every second
+dvoils@desktop:~/Desktop/repos/blockflow$ cat docker/spark-app/Dockerfile
+FROM spark-with-kafka:3.4.0
+
+# Ensure Spark's bin directory is in PATH
+ENV PATH=$PATH:/opt/spark/bin
+RUN echo "PATH is $PATH"
+
+# Set the working directory
+WORKDIR /opt/app
+
+# Create the upload directory for Spark files
+RUN mkdir -p /tmp/spark-upload
+
+# Copy the Spark application
+COPY spark_app.py /opt/app/app.py
+
+# Default command for spark-submit
+CMD ["spark-submit", \
+     "--master", "k8s://https://192.168.49.2:8443", \
+     "--deploy-mode", "cluster", \
+     "--conf", "spark.kubernetes.namespace=spark", \
+     "--conf", "spark.kubernetes.container.image=spark-app:latest", \
+     "--conf", "spark.driver.memory=2g", \
+     "--conf", "spark.executor.instances=1", \
+     "--conf", "spark.executor.memory=2g", \
+     "--conf", "spark.executor.cores=1", \
+     "--conf", "spark.kubernetes.driver.volumes.persistentVolumeClaim.checkpointpvc.options.claimName=spark-checkpoint-pvc", \
+     "--conf", "spark.kubernetes.driver.volumes.persistentVolumeClaim.checkpointpvc.mount.path=/mnt/spark/checkpoints", \
+     "--conf", "spark.kubernetes.driver.volumes.persistentVolumeClaim.checkpointpvc.mount.readOnly=false", \
+     "--conf", "spark.kubernetes.executor.volumes.persistentVolumeClaim.checkpointpvc.options.claimName=spark-checkpoint-pvc", \
+     "--conf", "spark.kubernetes.executor.volumes.persistentVolumeClaim.checkpointpvc.mount.path=/mnt/spark/checkpoints", \
+     "--conf", "spark.kubernetes.executor.volumes.persistentVolumeClaim.checkpointpvc.mount.readOnly=false", \
+     "--conf", "spark.kubernetes.driver.volumes.configMap.spark-config.mount.path=/etc/spark/conf", \
+     "--conf", "spark.kubernetes.executor.volumes.configMap.spark-config.mount.path=/etc/spark/conf", \
+     "--conf", "spark.kubernetes.driver.volumes.configMap.spark-config.mount.readOnly=true", \
+     "--conf", "spark.kubernetes.executor.volumes.configMap.spark-config.mount.readOnly=true", \
+     "--conf", "spark.driver.extraJavaOptions=-Dlog4j.configuration=file:/etc/spark/conf/log4j.properties", \
+     "--conf", "spark.executor.extraJavaOptions=-Dlog4j.configuration=file:/etc/spark/conf/log4j.properties", \
+     "--conf", "spark.kubernetes.driver.request.retries=3", \
+     "--conf", "spark.kubernetes.file.upload.path=file:///tmp/spark-upload", \
+     "--conf", "spark.kubernetes.authenticate.driver.serviceAccountName=spark", \
+     "--conf", "spark.kubernetes.authenticate.caCertFile=/etc/ssl/certs/ca-certificates.crt", \
+     "--conf", "spark.kubernetes.authenticate.submission.oauthToken=${K8S_TOKEN}", \
+     "--conf", "spark.kubernetes.authenticate.caCertFile=/usr/local/share/ca-certificates/minikube-ca.crt", \
+     "local:///opt/app/app.py"]
+dvoils@desktop:~/Desktop/repos/blockflow$ 
+dvoils@desktop:~/Desktop/repos/blockflow$ cat docker/spark-app/spark_app.py
+from pyspark.sql import SparkSession
+from pyspark.logger import PySparkLogger  # Import PySparkLogger for structured logging
+
+# Create a Spark session
+spark = SparkSession.builder \
+    .appName("KafkaUnconfirmedTransactionsReader") \
+    .config("spark.sql.streaming.forceDeleteTempCheckpointLocation", "true") \
+    .getOrCreate()
+
+# Create a logger using PySparkLogger
+logger = PySparkLogger.getLogger("KafkaUnconfirmedTransactionsReader")
+
+# Log messages
+logger.info("Starting KafkaUnconfirmedTransactionsReader application")
+
+# Define Kafka source
+kafka_df = spark.readStream \
+    .format("kafka") \
+    .option("kafka.bootstrap.servers", "kafka-broker.kafka.svc.cluster.local:9092") \
+    .option("subscribe", "unconfirmed_transactions") \
+    .option("startingOffsets", "earliest") \
+    .load()
+
+# Select the `value` column and cast it to STRING
+messages_df = kafka_df.selectExpr("CAST(value AS STRING)")
+
+# Log each message
+def log_batch(batch_df, batch_id):
+    logger.info(f"Processing batch {batch_id}", batch_id=batch_id)
+    messages = batch_df.collect()
+    for message in messages:
+        logger.info(f"Message: {message['value']}", message=message['value'])  # Adjust 'value' key if needed
+
+# Ensure the checkpoint directory exists
+checkpoint_location = "/mnt/spark/checkpoints/kafka_unconfirmed_transactions_reader"
+
+# Write the streaming data to the console and log messages
+query = messages_df.writeStream \
+    .outputMode("append") \
+    .foreachBatch(log_batch) \
+    .option("checkpointLocation", checkpoint_location) \
+    .start()
+
+try:
+    # Wait for the query to terminate
+    query.awaitTermination()
+except Exception as e:
+    logger.error(f"Streaming query failed: {e}", exception=str(e))dvoils@desktop:~/Desktop/repos/blockflow$ cat kubernetes/kafka/*.yaml             cat kubernetes/kafka/*.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingest-app
+  namespace: kafka
+  labels:
+    app: ingest-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ingest-app
+  template:
+    metadata:
+      labels:
+        app: ingest-app
+    spec:
+      containers:
+      - name: ingest-app
+        image: ingest-app:latest  # Update this with your actual Docker image
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          value: "kafka-broker.kafka.svc.cluster.local:9092"  # Ensure this matches your Kafka service
+        ports:
+        - containerPort: 8080  # You can change this if your app uses a different port
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "200Mi"
+          limits:
+            cpu: "200m"
+            memory: "400Mi"
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingest-app-service
+  namespace: kafka
+  labels:
+    app: ingest-app
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080  # The port your application is listening on
+      targetPort: 8080  # This should match the containerPort in the deployment
+  selector:
+    app: ingest-app
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: kafka-broker
+  name: kafka-broker
+  namespace: kafka
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-broker
+  template:
+    metadata:
+      labels:
+        app: kafka-broker
+    spec:
+      containers:
+      - name: kafka-broker
+        image: wurstmeister/kafka
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: KAFKA_BROKER_ID
+          value: "1"
+        - name: KAFKA_ZOOKEEPER_CONNECT
+          value: zookeeper.kafka:2181  # Correct service name for Zookeeper
+        - name: KAFKA_LISTENERS
+          value: PLAINTEXT://0.0.0.0:9092  # Listen on all interfaces
+        - name: KAFKA_ADVERTISED_LISTENERS
+          value: PLAINTEXT://kafka-broker.kafka.svc.cluster.local:9092  # FQDN for cross-namespace access
+        ports:
+        - containerPort: 9092apiVersion: v1
+kind: Namespace
+metadata:
+  name: "kafka"
+  labels:
+    name: "kafka"
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: kafka-broker
+  name: kafka-broker
+  namespace: kafka
+spec:
+  type: NodePort
+  ports:
+    - port: 9092
+      targetPort: 9092
+      nodePort: 30951
+  selector:
+    app: kafka-broker
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zookeeper
+  namespace: kafka
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zookeeper
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+    spec:
+      containers:
+      - name: zookeeper
+        image: zookeeper:3.6
+        ports:
+        - containerPort: 2181
+        env:
+        - name: ZOO_MY_ID
+          value: "1"
+        - name: ZOO_STANDALONE_ENABLED
+          value: "true"
+apiVersion: v1
+kind: Service
+metadata:
+  name: zookeeper
+  namespace: kafka
+spec:
+  ports:
+  - port: 2181
+    targetPort: 2181
+    name: client
+  selector:
+    app: zookeeper
+dvoils@desktop:~/Desktop/repos/blockflow$ cat kubernetes/spark-app/*.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: spark-cluster-rolebinding
+subjects:
+  - kind: ServiceAccount
+    name: spark
+    namespace: spark
+roleRef:
+  kind: ClusterRole
+  name: spark-cluster-role
+  apiGroup: rbac.authorization.k8s.io
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: spark-cluster-role
+rules:
+  - apiGroups: [""]
+    resources: 
+      - "pods"
+      - "pods/log"
+      - "services"
+      - "configmaps"
+      - "secrets"
+      - "persistentvolumeclaims"
+    verbs: 
+      - "get"
+      - "watch"
+      - "list"
+      - "create"
+      - "delete"
+      - "deletecollection"
+      - "update"
+      - "patch"
+  - apiGroups: [""]
+    resources:
+      - "endpoints"
+    verbs:
+      - "get"
+      - "list"
+      - "watch"
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: spark
+  namespace: spark
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spark-streaming-app
+  namespace: spark
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spark-streaming-app
+  template:
+    metadata:
+      labels:
+        app: spark-streaming-app
+    spec:
+      serviceAccountName: spark  # Ensure the service account is correctly set
+      containers:
+      - name: spark-streaming-app
+        image: spark-app:latest
+        imagePullPolicy: IfNotPresent
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "0.5"
+          limits:
+            memory: "2Gi"
+            cpu: "1"
+        ports:
+        - containerPort: 4040  # Spark UI port
+        env:
+        - name: K8S_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: spark-token-secret
+              key: token
+        - name: SPARK_HOME
+          value: "/opt/spark"
+        volumeMounts:
+        - mountPath: "/mnt/spark/checkpoints"  # Checkpoint directory
+          name: spark-checkpoint-volume
+        - mountPath: "/opt/spark/conf"  # Spark configuration directory
+          name: spark-config-volume
+        - mountPath: "/tmp/spark-upload"  # Spark file upload directory
+          name: spark-upload-volume
+      volumes:
+      - name: spark-checkpoint-volume
+        persistentVolumeClaim:
+          claimName: spark-checkpoint-pvc  # Reference the PVC for checkpoints
+      - name: spark-config-volume
+        configMap:
+          name: spark-config  # Reference the ConfigMap for Spark configuration
+      - name: spark-upload-volume
+        emptyDir: {}  # Temporary directory for Spark file uploadsapiVersion: batch/v1
+kind: Job
+metadata:
+  name: spark-app-job
+  namespace: spark
+spec:
+  ttlSecondsAfterFinished: 3600  # Keep pods for 1 hour after job completion
+  template:
+    metadata:
+      labels:
+        app: spark-app
+    spec:
+      containers:
+      - name: spark-app
+        image: spark-app:latest
+        imagePullPolicy: IfNotPresent
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "0.5"
+          limits:
+            memory: "1Gi"
+            cpu: "1"
+      restartPolicy: Never
+  backoffLimit: 4
+apiVersion: v1
+kind: Service
+metadata:
+  name: spark-driver
+  namespace: spark
+spec:
+  selector:
+    app: spark-driver
+  ports:
+  - protocol: TCP
+    port: 4040
+    targetPort: 4040
+  type: ClusterIPapiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: spark-checkpoint-pvc
+  namespace: spark
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  selector:
+    matchLabels:
+      type: local
+  storageClassName: ""  # Explicitly set to empty string to use the manual PVapiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: spark-checkpoint-pv
+  labels:
+    type: local
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: "/mnt/spark/checkpoints"
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: spark
+apiVersion: v1
+kind: Secret
+metadata:
+  name: spark-token
+  namespace: spark
+  annotations:
+    kubernetes.io/service-account.name: spark
+type: kubernetes.io/service-account-token
+dvoils@desktop:~/Desktop/repos/blockflow$ 
+
+ cat setup.md 
+
+# Minikube
+## Start Minikube
+```bash
+minikube config set memory 6144
+minikube config set cpus 4
+minikube start
+minikube config view
+```
+
+## Use Minikube's Docker Repository
+```bash
+eval $(minikube docker-env)
+docker info | grep "Name:"
+```
+
+## Export Minikube's CA Certificate
++ Get the certification, in this case using minikube's
+```bash
+minikube ssh cat /var/lib/minikube/certs/ca.crt > minikube-ca.crt
+```
++ Put the certification into `docker/base-spark-app`
+
+## Determine Minikube's IP
+minikube ip
+
+# Docker
+## Using BuildKit
+It seems that docker comes installed with the legacy builder for some reason.
+
+DEPRECATED: The legacy builder is deprecated and will be removed in a future release.
+            Install the buildx component to build images with BuildKit:
+            https://docs.docker.com/go/buildx/
+
+```bash
+sudo apt install docker-buildx
+```
+
+## Build Docker Images
+```bash
+docker build -t spark-with-kafka:3.4.0 -f Dockerfile.base .
+docker build -t ingest-app:latest .
+docker build -t spark-app:latest .
+```
+
+# Update Pipenv
+```bash
+pipenv shell
+pipenv lock
+pipenv sync
+```
+
+
+
+# Deploy Kafka
++ Deploy in this order.
++ Verify the pod is up before deploying the next step
+
+```bash
+kubectl apply -f kafka-namespace.yaml
+
+kubectl apply -f zookeeper-deployment.yaml
+kubectl apply -f zookeeper-service.yaml
+
+kubectl apply -f kafka-deployment.yaml
+kubectl apply -f kafka-service.yaml
+
+kubectl apply -f ingest-app-deployment.yaml
+kubectl apply -f ingest-app-service.yaml
+
+kubectl get pods -n kafka
+```
+
+# Deploy Spark
+## Create Spark namespace
+```bash
+kubectl apply -f spark-namespace.yaml
+```
+
+## Create Service Account
+```bash
+kubectl create serviceaccount spark -n spark
+# kubectl apply -f serviceaccount.yaml
+```
+
+## Bind the ServiceAccount to a Role
+```bash
+kubectl apply -f role.yaml
+kubectl apply -f rolebinding.yaml
+kubectl -n spark --as="system:serviceaccount:spark:spark" auth can-i deletecollection configmaps
++ should return - yes
+```
+## Create a Token Secret
+```bash
+kubectl apply -f spark-token.yaml
+kubectl get secrets -n spark
+kubectl describe secret spark-token -n spark
+```
+
+## Create Spark Token Secret
+```bash
+K8S_TOKEN=$(kubectl get secret spark-token -n spark -o jsonpath='{.data.token}' | base64 --decode)
+kubectl create secret generic spark-token-secret \
+    -n spark \
+    --from-literal=token="${K8S_TOKEN}"
+kubectl describe secret spark-token-secret -n spark
+```
+
+## Create Kubernetes IP Config Map
+```bash
+kubectl create configmap spark-config \
+  --from-literal=SPARK_K8S_API_SERVER=$(minikube ip) \
+  --from-file=/home/dvoils/Desktop/repos/blockflow/docker/base-spark-kafka/spark-defaults.conf \
+  --from-file=/home/dvoils/Desktop/repos/blockflow/docker/base-spark-kafka/log4j.properties \
+  -n spark
+```
+
+## Check Service Account and Roles
+```bash
+kubectl get serviceaccounts -n spark
+kubectl get roles -n spark
+kubectl get clusterroles
+kubectl get clusterrolebindings
+```
+
+## Create Checkpoint Directory in Minikube
+```bash
+minikube ssh
+sudo mkdir -p /mnt/spark/checkpoints
+sudo chmod -R 777 /mnt/spark/checkpoints
+```
+
+## Create Persistent Checkpoint Volume
+```bash
+kubectl apply -f spark-checkpoint-volume.yaml
+kubectl apply -f spark-checkpoint-claim.yaml
+```
+
+## Create Job or Deployment
+```bash
+kubectl apply -f spark-app-job.yaml
+kubectl apply -f spark-app-deployment.yaml
+kubectl apply -f spark-app-service.yaml
+
+kubectl get pods -n spark
+```
+
+
+# Test kafka
+## Create test pod
+```bash
+kubectl run kafka-test-producer \
+  -n kafka \
+  --rm -it \
+  --image=wurstmeister/kafka \
+  --restart=Never \
+  -- /bin/bash
+```
+
+## Consumer
+```bash
+/opt/kafka/bin/kafka-console-consumer.sh \
+  --bootstrap-server kafka-broker:9092 \
+  --topic unconfirmed_transactions \
+  --from-beginning
+```
+
+## Find Tools
+```bash
+find / -name kafka-topics.sh 2>/dev/null
+```
