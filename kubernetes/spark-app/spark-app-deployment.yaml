@@ -35,19 +35,48 @@ spec:
               key: token
         - name: SPARK_HOME
           value: "/opt/spark"
+        - name: SPARK_LOG_DIR
+          value: "/var/log/spark"  # Set Spark log directory
         volumeMounts:
-        - mountPath: "/mnt/spark/checkpoints"  # Checkpoint directory
+        - mountPath: "/mnt/spark/checkpoints"
           name: spark-checkpoint-volume
-        - mountPath: "/opt/spark/conf"  # Spark configuration directory
+        - mountPath: "/opt/spark/conf"
           name: spark-config-volume
-        - mountPath: "/tmp/spark-upload"  # Spark file upload directory
+        - mountPath: "/tmp/spark-upload"
           name: spark-upload-volume
+        - mountPath: "/var/log/spark"  # Shared volume for logs
+          name: spark-logs-volume
+
+      # **Fluent Bit Sidecar for Log Forwarding**
+      - name: fluent-bit
+        image: fluent/fluent-bit:latest
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "0.1"
+          limits:
+            memory: "256Mi"
+            cpu: "0.5"
+        volumeMounts:
+        - mountPath: "/var/log/spark"
+          name: spark-logs-volume
+        - mountPath: "/fluent-bit/etc/"
+          name: fluentbit-config-volume
+        env:
+        - name: FLUENT_BIT_CONFIG
+          value: "/fluent-bit/etc/fluent-bit.conf"
+
       volumes:
       - name: spark-checkpoint-volume
         persistentVolumeClaim:
-          claimName: spark-checkpoint-pvc  # Reference the PVC for checkpoints
+          claimName: spark-checkpoint-pvc
       - name: spark-config-volume
         configMap:
-          name: spark-config  # Reference the ConfigMap for Spark configuration
+          name: spark-config
       - name: spark-upload-volume
-        emptyDir: {}  # Temporary directory for Spark file uploads
+        emptyDir: {}
+      - name: spark-logs-volume
+        emptyDir: {}  # Shared log volume for Spark & Fluent Bit
+      - name: fluentbit-config-volume
+        configMap:
+          name: fluentbit-config

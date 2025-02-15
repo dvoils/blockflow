@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluentbit-config
+  namespace: spark
+data:
+  fluent-bit.conf: |
+    [SERVICE]
+        Flush         5
+        Log_Level     debug  # ✅ Debug mode enabled
+        Parsers_File  /fluent-bit/etc/parsers.conf  # ✅ Correct parser path
+
+    [INPUT]
+        Name          tail
+        Path          /var/log/spark/spark-app.log
+        Parser        spark_parser
+        Tag           spark.log
+        Mem_Buf_Limit 10MB
+        Skip_Long_Lines On
+        Rotate_Wait   5  # Handle log rotation
+
+    [FILTER]
+        Name grep
+        Match spark.*
+        Exclude message "DEBUG"
+
+    [OUTPUT]
+        Name          kafka
+        Match         spark.*
+        Brokers       kafka-broker.kafka.svc.cluster.local:9092
+        Topics        spark-logs
+        Format        json
+        Retry_Limit   10
+        rdkafka.queue.buffering.max.ms 100
+        rdkafka.batch.num.messages 500
+
+  parsers.conf: |
+    [PARSER]
+        Name        spark_parser
+        Format      regex
+        Regex       ^(?<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[(?<thread>[^\]]+)\] (?<level>[A-Z]+) (?<logger>[^ ]+) - (?<message>.*)$
+        Time_Key    timestamp
+        Time_Format %Y-%m-%d %H:%M:%S

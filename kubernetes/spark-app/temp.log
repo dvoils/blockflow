@@ -1,0 +1,121 @@
+Name:             spark-streaming-app-65fbbc65f-q4nkn
+Namespace:        spark
+Priority:         0
+Service Account:  spark
+Node:             minikube/192.168.49.2
+Start Time:       Sun, 02 Feb 2025 18:42:57 -0800
+Labels:           app=spark-streaming-app
+                  pod-template-hash=65fbbc65f
+Annotations:      <none>
+Status:           Running
+IP:               10.244.0.43
+IPs:
+  IP:           10.244.0.43
+Controlled By:  ReplicaSet/spark-streaming-app-65fbbc65f
+Containers:
+  spark-streaming-app:
+    Container ID:   docker://4f4893c723a901d1fe7583a1ba43e97c652ccb9df7ed80a61e32cddb3ef749b9
+    Image:          spark-app:latest
+    Image ID:       docker://sha256:67cec73b1333b8dc9f0eb11cab11e8a3713579f65aa057276b6adc8905d93b8f
+    Port:           4040/TCP
+    Host Port:      0/TCP
+    State:          Running
+      Started:      Sun, 02 Feb 2025 18:43:03 -0800
+    Ready:          True
+    Restart Count:  0
+    Limits:
+      cpu:     1
+      memory:  2Gi
+    Requests:
+      cpu:     500m
+      memory:  1Gi
+    Environment:
+      K8S_TOKEN:      <set to the key 'token' in secret 'spark-token-secret'>  Optional: false
+      SPARK_HOME:     /opt/spark
+      SPARK_LOG_DIR:  /var/log/spark
+    Mounts:
+      /mnt/spark/checkpoints from spark-checkpoint-volume (rw)
+      /opt/spark/conf from spark-config-volume (rw)
+      /tmp/spark-upload from spark-upload-volume (rw)
+      /var/log/spark from spark-logs-volume (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-tb4dl (ro)
+  fluent-bit:
+    Container ID:   docker://29694078a6cdd7769a26fee4e01adb450a3fab0b80001ab3b9b12169903ccf6e
+    Image:          fluent/fluent-bit:latest
+    Image ID:       docker-pullable://fluent/fluent-bit@sha256:e278039fe91dd3c71765e85f3e7ac8de40ff2fa707728c52be90574f3dd9fb29
+    Port:           <none>
+    Host Port:      <none>
+    State:          Waiting
+      Reason:       CrashLoopBackOff
+    Last State:     Terminated
+      Reason:       Error
+      Exit Code:    1
+      Started:      Sun, 02 Feb 2025 18:54:31 -0800
+      Finished:     Sun, 02 Feb 2025 18:54:31 -0800
+    Ready:          False
+    Restart Count:  7
+    Limits:
+      cpu:     500m
+      memory:  256Mi
+    Requests:
+      cpu:     100m
+      memory:  128Mi
+    Environment:
+      FLUENT_BIT_CONFIG:  /fluent-bit/etc/fluent-bit.conf
+    Mounts:
+      /fluent-bit/etc/ from fluentbit-config-volume (rw)
+      /var/log/spark from spark-logs-volume (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-tb4dl (ro)
+Conditions:
+  Type                        Status
+  PodReadyToStartContainers   True 
+  Initialized                 True 
+  Ready                       False 
+  ContainersReady             False 
+  PodScheduled                True 
+Volumes:
+  spark-checkpoint-volume:
+    Type:       PersistentVolumeClaim (a reference to a PersistentVolumeClaim in the same namespace)
+    ClaimName:  spark-checkpoint-pvc
+    ReadOnly:   false
+  spark-config-volume:
+    Type:      ConfigMap (a volume populated by a ConfigMap)
+    Name:      spark-config
+    Optional:  false
+  spark-upload-volume:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:     
+    SizeLimit:  <unset>
+  spark-logs-volume:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:     
+    SizeLimit:  <unset>
+  fluentbit-config-volume:
+    Type:      ConfigMap (a volume populated by a ConfigMap)
+    Name:      fluentbit-config
+    Optional:  false
+  kube-api-access-tb4dl:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    ConfigMapOptional:       <nil>
+    DownwardAPI:             true
+QoS Class:                   Burstable
+Node-Selectors:              <none>
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason     Age                   From               Message
+  ----     ------     ----                  ----               -------
+  Normal   Scheduled  14m                   default-scheduler  Successfully assigned spark/spark-streaming-app-65fbbc65f-q4nkn to minikube
+  Normal   Pulled     13m                   kubelet            Container image "spark-app:latest" already present on machine
+  Normal   Created    13m                   kubelet            Created container spark-streaming-app
+  Normal   Started    13m                   kubelet            Started container spark-streaming-app
+  Normal   Pulled     13m                   kubelet            Successfully pulled image "fluent/fluent-bit:latest" in 20.16s (20.16s including waiting). Image size: 90661909 bytes.
+  Normal   Pulled     13m                   kubelet            Successfully pulled image "fluent/fluent-bit:latest" in 1.898s (1.898s including waiting). Image size: 90661909 bytes.
+  Normal   Pulled     13m                   kubelet            Successfully pulled image "fluent/fluent-bit:latest" in 1.396s (1.396s including waiting). Image size: 90661909 bytes.
+  Normal   Pulling    12m (x4 over 13m)     kubelet            Pulling image "fluent/fluent-bit:latest"
+  Normal   Pulled     12m                   kubelet            Successfully pulled image "fluent/fluent-bit:latest" in 1.379s (1.379s including waiting). Image size: 90661909 bytes.
+  Normal   Created    12m (x4 over 13m)     kubelet            Created container fluent-bit
+  Normal   Started    12m (x4 over 13m)     kubelet            Started container fluent-bit
+  Warning  BackOff    3m55s (x46 over 13m)  kubelet            Back-off restarting failed container fluent-bit in pod spark-streaming-app-65fbbc65f-q4nkn_spark(7758d276-1edc-4595-8de2-0e9d71a36436)
