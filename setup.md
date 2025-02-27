@@ -19,10 +19,20 @@ docker info | grep "Name:"
 ```bash
 minikube ssh cat /var/lib/minikube/certs/ca.crt > minikube-ca.crt
 ```
-+ Put the certification into `docker/base-spark-app`
++ Put the certification into `docker/base-spark-kafka`
 
 ## Determine Minikube's IP
 minikube ip
+
+# Install kubectl
+You need to install `kubectl` using the `--classic` flag because it requires classic confinement to function properly. Run the following command:
+
+```sh
+sudo snap install kubectl --classic
+```
+
+- Ubuntu’s `snap` packages are usually confined to a sandbox for security.
+- `kubectl` needs broader system access to interact with Kubernetes clusters, so it uses - The warning is just an informational message—`kubectl` is safe to install this way.
 
 # Docker
 ## Using BuildKit
@@ -49,8 +59,6 @@ pipenv shell
 pipenv lock
 pipenv sync
 ```
-
-
 
 # Deploy Kafka
 + Deploy in this order.
