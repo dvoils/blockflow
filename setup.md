@@ -143,6 +143,11 @@ sudo chmod -R 777 /mnt/spark/checkpoints
 kubectl apply -f spark-checkpoint-volume.yaml
 kubectl apply -f spark-checkpoint-claim.yaml
 ```
+## Create Fluent Bit Configmap
+```bash
+kubectl apply -f fluentbit-config.yaml -n spark
+kubectl apply -f spark-rbac.yaml -n spark
+```
 
 ## Create Job or Deployment
 ```bash

@@ -7,8 +7,8 @@ data:
   fluent-bit.conf: |
     [SERVICE]
         Flush         5
-        Log_Level     debug  # ✅ Debug mode enabled
-        Parsers_File  /fluent-bit/etc/parsers.conf  # ✅ Correct parser path
+        Log_Level     debug
+        Parsers_File  /fluent-bit/etc/parsers.conf
 
     [INPUT]
         Name          tail
@@ -17,12 +17,12 @@ data:
         Tag           spark.log
         Mem_Buf_Limit 10MB
         Skip_Long_Lines On
-        Rotate_Wait   5  # Handle log rotation
+        Rotate_Wait   5
 
     [FILTER]
-        Name grep
-        Match spark.*
-        Exclude message "DEBUG"
+        Name          grep
+        Match         spark.*
+        Exclude       message "DEBUG"
 
     [OUTPUT]
         Name          kafka

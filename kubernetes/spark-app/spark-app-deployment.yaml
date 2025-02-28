@@ -13,7 +13,7 @@ spec:
       labels:
         app: spark-streaming-app
     spec:
-      serviceAccountName: spark  # Ensure the service account is correctly set
+      serviceAccountName: spark  # Ensure this service account exists in 'spark' namespace
       containers:
       - name: spark-streaming-app
         image: spark-app:latest
@@ -36,20 +36,19 @@ spec:
         - name: SPARK_HOME
           value: "/opt/spark"
         - name: SPARK_LOG_DIR
-          value: "/var/log/spark"  # Set Spark log directory
+          value: "/var/log/spark"  # Ensure Spark writes logs to this directory
         volumeMounts:
         - mountPath: "/mnt/spark/checkpoints"
           name: spark-checkpoint-volume
         - mountPath: "/opt/spark/conf"
-          name: spark-config-volume
+          name: spark-config-volume  # Contains log4j.properties
         - mountPath: "/tmp/spark-upload"
           name: spark-upload-volume
-        - mountPath: "/var/log/spark"  # Shared volume for logs
-          name: spark-logs-volume
+        - mountPath: "/var/log/spark"
+          name: spark-logs-volume  # Shared log volume for Spark & Fluent Bit
 
-      # **Fluent Bit Sidecar for Log Forwarding**
       - name: fluent-bit
-        image: fluent/fluent-bit:latest
+        image: fluent/fluent-bit:1.8.10  # Pinned version for stability
         resources:
           requests:
             memory: "128Mi"
@@ -59,7 +58,7 @@ spec:
             cpu: "0.5"
         volumeMounts:
         - mountPath: "/var/log/spark"
-          name: spark-logs-volume
+          name: spark-logs-volume  # Tails logs written by Spark app
         - mountPath: "/fluent-bit/etc/"
           name: fluentbit-config-volume
         env:
@@ -69,14 +68,14 @@ spec:
       volumes:
       - name: spark-checkpoint-volume
         persistentVolumeClaim:
-          claimName: spark-checkpoint-pvc
+          claimName: spark-checkpoint-pvc  # Ensure this PVC exists
       - name: spark-config-volume
         configMap:
-          name: spark-config
+          name: spark-config  # Provides Spark configuration including log4j.properties
       - name: spark-upload-volume
         emptyDir: {}
       - name: spark-logs-volume
-        emptyDir: {}  # Shared log volume for Spark & Fluent Bit
+        emptyDir: {}  # Shared log volume for both containers
       - name: fluentbit-config-volume
         configMap:
           name: fluentbit-config
