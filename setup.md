@@ -118,8 +118,8 @@ kubectl describe secret spark-token-secret -n spark
 ```bash
 kubectl create configmap spark-config \
   --from-literal=SPARK_K8S_API_SERVER=$(minikube ip) \
-  --from-file=/home/dvoils/Desktop/repos/blockflow/docker/base-spark-kafka/spark-defaults.conf \
-  --from-file=/home/dvoils/Desktop/repos/blockflow/docker/base-spark-kafka/log4j.properties \
+  --from-file=/home/dvoils/Desktop/blockflow/docker/base-spark-kafka/spark-defaults.conf \
+  --from-file=/home/dvoils/Desktop/blockflow/docker/base-spark-kafka/log4j.properties \
   -n spark
 ```
 
