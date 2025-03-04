@@ -39,6 +39,9 @@ COPY log4j.properties /opt/spark/conf/log4j.properties
 # Ensure permissions for configuration files
 RUN chmod -R 777 /opt/spark/conf
 
+# Create necessary directories for Spark file uploads & logs
+RUN mkdir -p /tmp/spark-upload /mnt/spark/logs && chmod -R 777 /mnt/spark/logs
+
 # Set SPARK_CLASSPATH to include all JARs in the directory
 ENV SPARK_CLASSPATH="/opt/spark/jars/*"
 

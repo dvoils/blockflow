@@ -23,6 +23,12 @@ CMD ["spark-submit", \
      "--conf", "spark.executor.instances=1", \
      "--conf", "spark.executor.memory=2g", \
      "--conf", "spark.executor.cores=1", \
+     # Mount logs volume in DRIVER
+     "--conf", "spark.kubernetes.driver.volumes.persistentVolumeClaim.spark-logs.mount.path=/mnt/spark/logs", \
+     "--conf", "spark.kubernetes.driver.volumes.persistentVolumeClaim.spark-logs.options.claimName=spark-logs-pvc", \
+     # Mount logs volume in EXECUTOR
+     "--conf", "spark.kubernetes.executor.volumes.persistentVolumeClaim.spark-logs.mount.path=/mnt/spark/logs", \
+     "--conf", "spark.kubernetes.executor.volumes.persistentVolumeClaim.spark-logs.options.claimName=spark-logs-pvc", \
      "--conf", "spark.kubernetes.driver.volumes.persistentVolumeClaim.checkpointpvc.options.claimName=spark-checkpoint-pvc", \
      "--conf", "spark.kubernetes.driver.volumes.persistentVolumeClaim.checkpointpvc.mount.path=/mnt/spark/checkpoints", \
      "--conf", "spark.kubernetes.driver.volumes.persistentVolumeClaim.checkpointpvc.mount.readOnly=false", \
