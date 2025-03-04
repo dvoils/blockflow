@@ -1,3 +1,19 @@
+
+kubectl exec -it spark-streaming-app-xxxxxx -c spark-streaming-app -n spark -- tail -f /mnt/spark/logs/spark-app.log
+
+
+kubectl delete pod -n spark -l app=spark-streaming-app
+
+kubectl logs spark-streaming-app-7bb695b759-hv6qn -n spark
+kubectl describe pod spark-streaming-app-7bb695b759-hv6qn -n spark
+
+kubectl logs -f spark-streaming-app-7d8f6d56d8-kk8bv -c fluent-bit -n spark
+kubectl exec -it spark-streaming-app-7bb695b759-hv6qn -n spark -- bash
+kubectl describe pod spark-streaming-app-7bb695b759-hv6qn
+
+
+
+
 kubectl describe node minikube
 
 

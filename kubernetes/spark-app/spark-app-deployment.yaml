@@ -28,6 +28,8 @@ spec:
         ports:
         - containerPort: 4040  # Spark UI port
         env:
+        - name: SPARK_SUBMIT_OPTS
+          value: "-Dlog4j.configuration=file:/opt/spark/conf/log4j.properties"
         - name: K8S_TOKEN
           valueFrom:
             secretKeyRef:
@@ -36,7 +38,7 @@ spec:
         - name: SPARK_HOME
           value: "/opt/spark"
         - name: SPARK_LOG_DIR
-          value: "/var/log/spark"  # Ensure Spark writes logs to this directory
+          value: "/mnt/spark/logs"  # Ensure Spark writes logs to this directory
         volumeMounts:
         - mountPath: "/mnt/spark/checkpoints"
           name: spark-checkpoint-volume
@@ -44,7 +46,7 @@ spec:
           name: spark-config-volume  # Contains log4j.properties
         - mountPath: "/tmp/spark-upload"
           name: spark-upload-volume
-        - mountPath: "/var/log/spark"
+        - mountPath: "/mnt/spark/logs"
           name: spark-logs-volume  # Shared log volume for Spark & Fluent Bit
 
       - name: fluent-bit
@@ -57,7 +59,7 @@ spec:
             memory: "256Mi"
             cpu: "0.5"
         volumeMounts:
-        - mountPath: "/var/log/spark"
+        - mountPath: "/mnt/spark/logs"
           name: spark-logs-volume  # Tails logs written by Spark app
         - mountPath: "/fluent-bit/etc/"
           name: fluentbit-config-volume
@@ -75,7 +77,8 @@ spec:
       - name: spark-upload-volume
         emptyDir: {}
       - name: spark-logs-volume
-        emptyDir: {}  # Shared log volume for both containers
+        persistentVolumeClaim:
+          claimName: spark-logs-pvc
       - name: fluentbit-config-volume
         configMap:
           name: fluentbit-config

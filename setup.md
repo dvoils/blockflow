@@ -4,6 +4,7 @@
 ```bash
 minikube config set memory 6144
 minikube config set cpus 4
+minikube delete
 minikube start
 minikube config view
 ```
@@ -131,17 +132,21 @@ kubectl get clusterroles
 kubectl get clusterrolebindings
 ```
 
-## Create Checkpoint Directory in Minikube
+## Create Persistent Volumes for Spark in Minkkube
 ```bash
 minikube ssh
 sudo mkdir -p /mnt/spark/checkpoints
 sudo chmod -R 777 /mnt/spark/checkpoints
+sudo mkdir -p /mnt/spark/logs
+sudo chmod -R 777 /mnt/spark/logs
 ```
 
-## Create Persistent Checkpoint Volume
+## Create Persistent Volume
 ```bash
 kubectl apply -f spark-checkpoint-volume.yaml
 kubectl apply -f spark-checkpoint-claim.yaml
+kubectl apply -f spark-logs-volume.yaml
+kubectl apply -f spark-logs-claim.yaml
 ```
 ## Create Fluent Bit Configmap
 ```bash
@@ -170,13 +175,21 @@ kubectl run kafka-test-producer \
   -- /bin/bash
 ```
 
-## Consumer
+## Ingestion Steam
 ```bash
 /opt/kafka/bin/kafka-console-consumer.sh \
   --bootstrap-server kafka-broker:9092 \
   --topic unconfirmed_transactions \
   --from-beginning
 ```
+## Spark Logs Stream
+```bash
+/opt/kafka/bin/kafka-console-consumer.sh \
+  --bootstrap-server kafka-broker:9092 \
+  --topic spark-logs \
+  --from-beginning
+```
+
 
 ## Find Tools
 ```bash

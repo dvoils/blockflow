@@ -12,7 +12,7 @@ data:
 
     [INPUT]
         Name          tail
-        Path          /var/log/spark/spark-app.log
+        Path          /mnt/spark/logs/*
         Parser        spark_parser
         Tag           spark.log
         Mem_Buf_Limit 10MB
