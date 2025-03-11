@@ -1,116 +1,52 @@
 import asyncio
-import websockets
 import json
-import logging
+import websockets
 from aiokafka import AIOKafkaProducer
 
-# ✅ Structured Logging Setup
-log_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-log_handler = logging.FileHandler("/mnt/spark/logs/bitcoin_transactions.log")
-log_handler.setFormatter(log_formatter)
-LOGGER = logging.getLogger("BitcoinWebSocketApp")
-LOGGER.setLevel(logging.INFO)
-LOGGER.addHandler(log_handler)
+KAFKA_BOOTSTRAP_SERVERS = "kafka-broker:9092"  # Replace with your broker address
+TOPIC = "unconfirmed_transactions"
+WS_URL = "wss://ws.blockchain.info/inv"
 
-# ✅ WebSocket URL for Blockchain API
-WEBSOCKET_URL = "wss://ws.blockchain.info/inv"
-
-# ✅ Kafka Configuration
-KAFKA_TOPIC_TRANSACTIONS = "unconfirmed_transactions"
-KAFKA_TOPIC_LOGS = "spark-logs"
-KAFKA_BROKER = "kafka-broker:9092"
-
-# ✅ Initialize Async Kafka Producer
-producer = None  # Will be initialized in the main function
-
-
-async def setup_kafka():
+async def produce_to_kafka(producer, message):
     """
-    Initializes the Kafka producer and waits until it is ready.
+    Sends the message to Kafka asynchronously.
     """
-    global producer
-    producer = AIOKafkaProducer(
-        bootstrap_servers=KAFKA_BROKER,
-        value_serializer=lambda v: json.dumps(v).encode('utf-8')
-    )
+    try:
+        await producer.send_and_wait(TOPIC, message.encode("utf-8"))
+        print("Produced transaction to Kafka:", message)
+    except Exception as e:
+        print("Failed to deliver message to Kafka:", e)
+
+async def stream_data():
+    """
+    Connects to the Blockchain.com WebSocket, subscribes to the unconfirmed
+    transactions stream, and forwards each message to Kafka.
+    """
+    # Initialize and start the asynchronous Kafka producer
+    producer = AIOKafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS)
     await producer.start()
-    LOGGER.info("Kafka producer started successfully.")
-
-
-async def subscribe_to_unconfirmed_transactions():
-    """
-    Connects to the WebSocket and listens for unconfirmed Bitcoin transactions.
-    """
-    async with websockets.connect(WEBSOCKET_URL) as websocket:
-        # ✅ Subscribe to unconfirmed transactions
-        await websocket.send(json.dumps({"op": "unconfirmed_sub"}))
-        LOGGER.info("Subscribed to unconfirmed transactions.")
-
-        # ✅ Listen for messages indefinitely
-        while True:
-            try:
-                message = await websocket.recv()
-                await process_message(message)
-            except websockets.exceptions.ConnectionClosed as e:
-                LOGGER.error(f"WebSocket connection closed: {e}")
-                break
-            except Exception as e:
-                LOGGER.error(f"Unexpected error: {e}", exc_info=True)
-
-
-async def process_message(message):
-    """
-    Parses WebSocket messages and sends transaction data to Kafka.
-    """
     try:
-        data = json.loads(message)
-        if data.get("op") == "utx":
-            transaction = data.get("x", {})
+        async with websockets.connect(WS_URL) as ws:
+            # Send the subscription message according to the API documentation
+            sub_msg = json.dumps({"op": "unconfirmed_sub"})
+            await ws.send(sub_msg)
+            print("WebSocket connection opened and subscription sent.")
+            while True:
+                message = await ws.recv()
+                try:
+                    # Optionally process JSON data
+                    data = json.loads(message)
+                except json.JSONDecodeError:
+                    print("Received non-JSON message:", message)
+                    continue
 
-            # ✅ Log transaction
-            log_transaction(transaction)
-
-            # ✅ Send transaction data to Kafka
-            await producer.send(KAFKA_TOPIC_TRANSACTIONS, transaction)
-            LOGGER.info(f"Transaction sent to Kafka: {transaction.get('hash', 'N/A')}")
-
-    except json.JSONDecodeError:
-        LOGGER.error("Error decoding JSON message", exc_info=True)
-
-
-def log_transaction(transaction):
-    """
-    Logs transaction details in a structured format.
-    """
-    tx_hash = transaction.get("hash", "N/A")
-    tx_index = transaction.get("tx_index", "N/A")
-    timestamp = transaction.get("time", "N/A")
-    inputs = transaction.get("inputs", [])
-    outputs = transaction.get("out", [])
-
-    log_entry = {
-        "@timestamp": timestamp,
-        "log": f"📦 Transaction: {json.dumps(transaction, indent=2)}"
-    }
-
-    LOGGER.info(json.dumps(log_entry))
-
-    # ✅ Send structured logs to Kafka log topic
-    asyncio.create_task(producer.send(KAFKA_TOPIC_LOGS, log_entry))
-
-
-async def main():
-    """
-    Main function that sets up Kafka and starts the WebSocket listener.
-    """
-    await setup_kafka()
-    try:
-        await subscribe_to_unconfirmed_transactions()
+                # Produce the message to Kafka asynchronously
+                await produce_to_kafka(producer, message)
+    except Exception as e:
+        print("Error with WebSocket connection:", e)
     finally:
+        # Ensure the producer is properly stopped
         await producer.stop()
-        LOGGER.info("Kafka producer stopped.")
 
-
-# ✅ Run the asyncio event loop
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(stream_data())

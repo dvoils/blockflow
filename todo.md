@@ -1,4 +1,18 @@
-Your setup is well-structured, with **Kafka** and **Spark** deployed in separate **Kubernetes namespaces** to ensure better isolation. Below are **best-practice recommendations** and **potential improvements**:
+# Other data sources
+
+- **Coinbase Pro**: [Coinbase Pro WebSocket API Documentation](https://docs.cdp.coinbase.com/exchange/docs/websocket-overview)
+
+- **Binance**: [Binance WebSocket API Documentation](https://developers.binance.com/docs/binance-spot-api-docs/web-socket-api/general-api-information)
+
+- **Kraken**: [Kraken WebSocket API Documentation](https://docs.kraken.com/websockets/)
+
+- **Bitfinex**: [Bitfinex WebSocket API Documentation](https://docs.bitfinex.com/docs/ws-general)
+
+- **Blockchain.com**: [Blockchain.com WebSocket API Documentation](https://www.blockchain.com/api/api_websocket)
+
+These resources provide comprehensive guides on how to connect to and utilize each exchange's WebSocket services for real-time data. 
+
+# Improvements
 
 ---
 
