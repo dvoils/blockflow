@@ -25,6 +25,7 @@ docker run -it --user root spark-app:latest bash
 minikube delete
 
 kubectl delete deployment spark-streaming-app -n spark
+kubectl delete deployment ingest-app -n kafka
 
 kubectl delete deployment spark-app -n spark
 kubectl delete pods --all -n spark
