@@ -165,30 +165,32 @@ kubectl get pods -n spark
 
 
 # Test kafka
-## Create test pod
++ These tests are set up to consume only new messages.
+
+## Create Test Pod
 ```bash
-kubectl run kafka-test-producer \
-  -n kafka \
-  --rm -it \
-  --image=wurstmeister/kafka \
-  --restart=Never \
-  -- /bin/bash
+   /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka-broker:9092 --topic processed_transactions --group kafka-debug-group
+```
+
+## Exec into Test Pod
+```bash
+   kubectl exec -it kafka-debugger -n kafka -- /bin/bash
 ```
 
 ## Ingestion Steam
 ```bash
-/opt/kafka/bin/kafka-console-consumer.sh \
-  --bootstrap-server kafka-broker:9092 \
-  --topic unconfirmed_transactions \
-  --from-beginning
+   /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka-broker:9092 --topic unconfirmed_transactions --group kafka-debug-group
 ```
 ## Spark Logs Stream
 ```bash
-/opt/kafka/bin/kafka-console-consumer.sh \
-  --bootstrap-server kafka-broker:9092 \
-  --topic spark-logs \
-  --from-beginning
+   /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka-broker:9092 --topic spark-logs --group kafka-debug-group
 ```
+
+## Spark Processed Data Stream 
+```bash
+   /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka-broker:9092 --topic processed_transactions --group kafka-debug-group
+```
+
 
 
 ## Find Tools
