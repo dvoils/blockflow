@@ -1,12 +1,16 @@
 import asyncio
 import json
 import logging
+import signal
+import sys
+import random
+
 import websockets
 from aiokafka import AIOKafkaProducer
 from jsonschema import validate, ValidationError
 
 # Configuration
-KAFKA_BOOTSTRAP_SERVERS = "kafka-broker:9092"  # Replace with your broker address
+KAFKA_BOOTSTRAP_SERVERS = "kafka-broker:9092"
 TOPIC = "unconfirmed_transactions"
 WS_URL = "wss://ws.blockchain.info/inv"
 
@@ -78,10 +82,6 @@ transaction_schema = {
 }
 
 def validate_transaction(message_data):
-    """
-    Validate the transaction JSON against the schema.
-    Returns True if valid, False otherwise.
-    """
     try:
         validate(instance=message_data, schema=transaction_schema)
         return True
@@ -90,50 +90,72 @@ def validate_transaction(message_data):
         return False
 
 async def produce_to_kafka(producer, message):
-    """
-    Sends the message to Kafka asynchronously.
-    """
     try:
         await producer.send_and_wait(TOPIC, message.encode("utf-8"))
-        logging.info("Produced transaction to Kafka: %s", message)
+        logging.info("Produced transaction to Kafka")
     except Exception as e:
         logging.error("Failed to deliver message to Kafka: %s", e)
 
+shutdown_event = asyncio.Event()
+
+def handle_shutdown():
+    logging.info("Received termination signal. Shutting down gracefully...")
+    shutdown_event.set()
+
 async def stream_data():
-    """
-    Connects to the Blockchain.com WebSocket, subscribes to the unconfirmed
-    transactions stream, validates each message against the schema,
-    and forwards valid messages to Kafka.
-    """
     producer = AIOKafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS)
     await producer.start()
     try:
-        async with websockets.connect(WS_URL) as ws:
-            # Subscribe to unconfirmed transactions
-            sub_msg = json.dumps({"op": "unconfirmed_sub"})
-            await ws.send(sub_msg)
-            logging.info("WebSocket connection opened and subscription sent.")
+        backoff = 1  # Initial backoff in seconds
+        while not shutdown_event.is_set():
+            try:
+                async with websockets.connect(
+                    WS_URL,
+                    ping_interval=20,
+                    ping_timeout=10
+                ) as ws:
+                    sub_msg = json.dumps({"op": "unconfirmed_sub"})
+                    await ws.send(sub_msg)
+                    logging.info("WebSocket connection opened and subscription sent.")
+                    backoff = 1  # reset backoff after successful connect
 
-            while True:
-                message = await ws.recv()
-                try:
-                    data = json.loads(message)
-                except json.JSONDecodeError:
-                    logging.error("Received non-JSON message: %s", message)
-                    continue
+                    while not shutdown_event.is_set():
+                        message = await asyncio.wait_for(ws.recv(), timeout=30)
+                        try:
+                            data = json.loads(message)
+                        except json.JSONDecodeError:
+                            logging.error("Received non-JSON message: %s", message)
+                            continue
 
-                # Validate the JSON message against the schema
-                if not validate_transaction(data):
-                    logging.warning("Invalid transaction schema, skipping message.")
-                    continue
+                        if not validate_transaction(data):
+                            logging.warning("Invalid transaction schema, skipping message.")
+                            continue
 
-                # Produce valid messages to Kafka
-                await produce_to_kafka(producer, message)
+                        await produce_to_kafka(producer, message)
 
-    except Exception as e:
-        logging.error("Error with WebSocket connection: %s", e)
+            except (websockets.ConnectionClosedError, asyncio.TimeoutError) as e:
+                logging.warning("WebSocket connection closed or timed out: %s", e)
+                sleep_time = backoff + random.uniform(0, backoff * 0.5)
+                logging.info("Reconnecting in %.2f seconds", sleep_time)
+                await asyncio.sleep(sleep_time)
+                backoff = min(backoff * 2, 60)  # cap at 60 seconds
+
+            except Exception as e:
+                logging.error("Unhandled exception: %s", e)
+                sleep_time = backoff + random.uniform(0, backoff * 0.5)
+                await asyncio.sleep(sleep_time)
+                backoff = min(backoff * 2, 60)
+
     finally:
         await producer.stop()
+        logging.info("Kafka producer closed. Exiting stream_data().")
+
+async def main():
+    loop = asyncio.get_running_loop()
+    loop.add_signal_handler(signal.SIGTERM, handle_shutdown)
+    loop.add_signal_handler(signal.SIGINT, handle_shutdown)
+
+    await stream_data()
 
 if __name__ == "__main__":
-    asyncio.run(stream_data())
+    asyncio.run(main())

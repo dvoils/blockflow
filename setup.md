@@ -169,7 +169,7 @@ kubectl get pods -n spark
 
 ## Create Test Pod
 ```bash
-   /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka-broker:9092 --topic processed_transactions --group kafka-debug-group
+   kubectl run kafka-debugger -n kafka --image=wurstmeister/kafka --restart=Never -- sleep infinity
 ```
 
 ## Exec into Test Pod

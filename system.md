@@ -111,7 +111,7 @@ kubectl rollout restart deploy/ingest-app -n kafka
 
    /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka-broker:9092 --topic unconfirmed_transactions --group kafka-debug-group
    /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka-broker:9092 --topic spark-logs --group kafka-debug-group
-   /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka-broker:9092 --topic spark-logs --group kafka-debug-group
+   /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka-broker:9092 --topic processed_transactions --group kafka-debug-group
 
    ```
 4. **Produce test messages**:  
