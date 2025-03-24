@@ -7,38 +7,12 @@ RUN echo "PATH is $PATH"
 # Set the working directory
 WORKDIR /opt/app
 
-# Create the upload directory for Spark files
+# Create upload directory for Spark file uploads
 RUN mkdir -p /tmp/spark-upload
 
-# Copy the Spark application
+# Copy Spark application and defaults file
 COPY spark_app.py /opt/app/app.py
+# COPY spark-defaults.conf /opt/spark/conf/spark-defaults.conf
 
-# Default command for spark-submit
-CMD ["spark-submit", \
-     "--master", "k8s://https://192.168.49.2:8443", \
-     "--deploy-mode", "cluster", \
-     "--conf", "spark.kubernetes.namespace=spark", \
-     "--conf", "spark.kubernetes.container.image=spark-app:latest", \
-     "--conf", "spark.driver.memory=2g", \
-     "--conf", "spark.executor.instances=1", \
-     "--conf", "spark.executor.memory=2g", \
-     "--conf", "spark.executor.cores=1", \
-     # Mount logs volume in DRIVER
-     "--conf", "spark.kubernetes.driver.volumes.persistentVolumeClaim.spark-logs.mount.path=/mnt/spark/logs", \
-     "--conf", "spark.kubernetes.driver.volumes.persistentVolumeClaim.spark-logs.options.claimName=spark-logs-pvc", \
-     # Mount logs volume in EXECUTOR
-     "--conf", "spark.kubernetes.executor.volumes.persistentVolumeClaim.spark-logs.mount.path=/mnt/spark/logs", \
-     "--conf", "spark.kubernetes.executor.volumes.persistentVolumeClaim.spark-logs.options.claimName=spark-logs-pvc", \
-     "--conf", "spark.kubernetes.driver.volumes.persistentVolumeClaim.checkpointpvc.options.claimName=spark-checkpoint-pvc", \
-     "--conf", "spark.kubernetes.driver.volumes.persistentVolumeClaim.checkpointpvc.mount.path=/mnt/spark/checkpoints", \
-     "--conf", "spark.kubernetes.driver.volumes.persistentVolumeClaim.checkpointpvc.mount.readOnly=false", \
-     "--conf", "spark.kubernetes.executor.volumes.persistentVolumeClaim.checkpointpvc.options.claimName=spark-checkpoint-pvc", \
-     "--conf", "spark.kubernetes.executor.volumes.persistentVolumeClaim.checkpointpvc.mount.path=/mnt/spark/checkpoints", \
-     "--conf", "spark.kubernetes.executor.volumes.persistentVolumeClaim.checkpointpvc.mount.readOnly=false", \
-     "--conf", "spark.kubernetes.driver.request.retries=3", \
-     "--conf", "spark.kubernetes.file.upload.path=file:///tmp/spark-upload", \
-     "--conf", "spark.kubernetes.authenticate.driver.serviceAccountName=spark", \
-     "--conf", "spark.kubernetes.authenticate.caCertFile=/etc/ssl/certs/ca-certificates.crt", \
-     "--conf", "spark.kubernetes.authenticate.submission.oauthToken=${K8S_TOKEN}", \
-     "--conf", "spark.kubernetes.authenticate.caCertFile=/usr/local/share/ca-certificates/minikube-ca.crt", \
-     "local:///opt/app/app.py"]
+# Default command
+CMD ["spark-submit", "local:///opt/app/app.py"]

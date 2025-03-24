@@ -163,7 +163,6 @@ kubectl apply -f spark-app-service.yaml
 kubectl get pods -n spark
 ```
 
-
 # Test kafka
 + These tests are set up to consume only new messages.
 

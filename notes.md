@@ -1,7 +1,14 @@
+
+
+kubectl delete deployment spark-streaming-app -n spark
+kubectl delete pods --all -n spark
+
+kubectl delete deployment ingest-app -n kafka
+
+kubectl delete configmap spark-config -n spark
+
+
 kafka-console-consumer.sh --bootstrap-server kafka-broker-7fb7f7bb66-c5ppm:9092 --topic unconfirmed_transactions --from-beginning
-
-
-
 
 kubectl exec -it spark-streaming-app-xxxxxx -c spark-streaming-app -n spark -- tail -f /mnt/spark/logs/spark-app.log
 kubectl exec -it spark-streaming-app-7d8f6d56d8-jgj8x -c spark-streaming-app -n spark -- tail -f /mnt/spark/logs/spark-app.log
@@ -26,14 +33,8 @@ docker run -it --user root spark-with-kafka:3.4.0 bash
 docker run -it --user root spark-app:latest bash
 
 
-minikube delete
-
-kubectl delete deployment spark-streaming-app -n spark
-kubectl delete deployment ingest-app -n kafka
-
 kubectl delete deployment spark-app -n spark
 kubectl delete pods --all -n kafka
-kubectl delete pods --all -n spark
 
 
 
