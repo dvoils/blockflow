@@ -51,6 +51,7 @@ sudo apt install docker-buildx
 ```bash
 docker build -t spark-with-kafka:3.4.0 -f Dockerfile.base .
 docker build -t ingest-app:latest .
+docker build -t mempool-ingest:latest .
 docker build -t spark-app:latest .
 ```
 
@@ -76,6 +77,9 @@ kubectl apply -f kafka-service.yaml
 
 kubectl apply -f ingest-app-deployment.yaml
 kubectl apply -f ingest-app-service.yaml
+
+kubectl apply -f mempool-ingest-deployment.yaml
+kubectl apply -f mempool-ingest-service.yaml
 
 kubectl get pods -n kafka
 ```
@@ -181,6 +185,12 @@ kubectl get pods -n spark
 ```bash
    /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka-broker:9092 --topic unconfirmed_transactions --group kafka-debug-group
 ```
+
+## Mempool Ingestion Steam
+```bash
+   /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka-broker:9092 --topic mempool_blocks --group kafka-debug-group
+```
+
 ## Spark Logs Stream
 ```bash
    /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka-broker:9092 --topic spark-logs --group kafka-debug-group
