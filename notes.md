@@ -5,6 +5,7 @@ kubectl delete pods --all -n spark
 
 kubectl delete deployment ingest-app -n kafka
 
+kubectl get configmaps
 kubectl delete configmap spark-config -n spark
 
 
