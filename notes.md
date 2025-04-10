@@ -1,3 +1,26 @@
+kubectl delete deployment spark-streaming-app -n spark
+kubectl delete deployment ingest-app -n kafka
+
+kubectl delete deployment spark-app -n spark
+kubectl delete pods --all -n kafka
+kubectl delete pods --all -n spark
+
+
+(
+cat docker/base-spark-kafka/Dockerfile.base
+cat docker/base-spark-kafka/log4j.properties
+cat docker/base-spark-kafka/spark-defaults.conf
+cat docker/spark-app/Dockerfile
+cat docker/spark-app/spark_app.py
+cat docker/mempool-ingest/Dockerfile
+cat docker/mempool-ingest/mempool_ingest.py
+cat docker/ingest-app/Dockerfile
+cat docker/ingest-app/ingest_app.py
+cat setup.md
+) > prompt.txt
+
+
+
 kafka-console-consumer.sh --bootstrap-server kafka-broker-7fb7f7bb66-c5ppm:9092 --topic unconfirmed_transactions --from-beginning
 
 
@@ -28,12 +51,6 @@ docker run -it --user root spark-app:latest bash
 
 minikube delete
 
-kubectl delete deployment spark-streaming-app -n spark
-kubectl delete deployment ingest-app -n kafka
-
-kubectl delete deployment spark-app -n spark
-kubectl delete pods --all -n kafka
-kubectl delete pods --all -n spark
 
 
 
