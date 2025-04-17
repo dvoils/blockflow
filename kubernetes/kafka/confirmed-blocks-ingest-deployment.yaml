@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: confirmed-blocks-ingest
+  namespace: kafka  # 👈 Use your actual namespace
+  labels:
+    app: confirmed-blocks-ingest
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: confirmed-blocks-ingest
+  template:
+    metadata:
+      labels:
+        app: confirmed-blocks-ingest
+    spec:
+      containers:
+        - name: confirmed-blocks-ingest
+          image: confirmed-blocks-ingest:latest  # 👈 Use your image name
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "kafka-broker.kafka.svc.cluster.local:9092"  # 👈 Match your Kafka service
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "200Mi"
+            limits:
+              cpu: "200m"
+              memory: "400Mi"

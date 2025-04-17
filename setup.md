@@ -52,6 +52,7 @@ sudo apt install docker-buildx
 docker build -t spark-with-kafka:3.4.0 -f Dockerfile.base .
 docker build -t ingest-app:latest .
 docker build -t spark-app:latest .
+docker build -t confirmed-blocks-ingest:latest .
 ```
 
 # Update Pipenv
@@ -76,6 +77,8 @@ kubectl apply -f kafka-service.yaml
 
 kubectl apply -f ingest-app-deployment.yaml
 kubectl apply -f ingest-app-service.yaml
+
+kubectl apply -f confirmed-blocks-ingest-deployment.yaml
 
 kubectl get pods -n kafka
 ```
@@ -181,6 +184,12 @@ kubectl get pods -n spark
 ```bash
    /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka-broker:9092 --topic unconfirmed_transactions --group kafka-debug-group
 ```
+
+## Confirmed Blocks Ingestion Stream
+```bash
+   /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka-broker:9092 --topic confirmed_blocks --group kafka-debug-group
+```
+
 ## Spark Logs Stream
 ```bash
    /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka-broker:9092 --topic spark-logs --group kafka-debug-group
