@@ -195,10 +195,17 @@ kubectl get pods -n spark
    /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka-broker:9092 --topic spark-logs --group kafka-debug-group
 ```
 
-## Spark Processed Data Stream 
+## Spark Transactions Data Stream 
 ```bash
    /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka-broker:9092 --topic processed_transactions --group kafka-debug-group
 ```
+
+## Spark Confirmed Blocks Data Stream 
+```bash
+   /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka-broker:9092 --topic processed_confirmed_blocks --group kafka-debug-group
+```
+
+
 
 
 

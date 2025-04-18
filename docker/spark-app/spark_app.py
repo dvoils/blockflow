@@ -1,51 +1,47 @@
 import os
 import json
 import logging
+import traceback
 from datetime import datetime
-from pyspark.sql.functions import to_json, struct
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, from_json
-from pyspark.sql.types import StructType, StructField, StringType, IntegerType, ArrayType, BooleanType, LongType
+from pyspark.sql.functions import col, from_json, to_json, struct
+from pyspark.sql.types import *
 
-TARGET_TOPIC = "processed_transactions"
+# Config
+KAFKA_BOOTSTRAP = "kafka-broker.kafka.svc.cluster.local:9092"
+TOPIC_UNCONFIRMED = "unconfirmed_transactions"
+TOPIC_CONFIRMED = "confirmed_blocks"
+TARGET_TOPIC_UNCONFIRMED = "processed_transactions"
+TARGET_TOPIC_CONFIRMED = "processed_confirmed_blocks"
 
-# ✅ Ensure the log directory exists
+# Logging
 log_dir = "/mnt/spark/logs"
-log_file = os.path.join(log_dir, "spark-app.log")
-
+log_file = os.path.join(log_dir, "spark-unified.log")
 os.makedirs(log_dir, exist_ok=True)
 
-# ✅ Configure Python logging
-logging.basicConfig(
-    filename=log_file,
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-)
-LOGGER = logging.getLogger("KafkaUnconfirmedTransactionsReader")
-LOGGER.info("✅ Python logging initialized.")
+logging.basicConfig(filename=log_file, level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+LOGGER = logging.getLogger("UnifiedKafkaStreamApp")
+LOGGER.info("✅ Unified Spark Streaming App starting...")
 
-# ✅ Create Spark session
+# Spark Session
 spark = SparkSession.builder \
-    .appName("KafkaUnconfirmedTransactionsReader") \
+    .appName("UnifiedKafkaStreamApp") \
     .config("spark.sql.streaming.forceDeleteTempCheckpointLocation", "true") \
     .getOrCreate()
-
 LOGGER.info("🚀 Spark session started.")
 
-# ✅ Kafka source definition
+# Kafka Source
 kafka_df = spark.readStream \
     .format("kafka") \
-    .option("kafka.bootstrap.servers", "kafka-broker.kafka.svc.cluster.local:9092") \
-    .option("subscribe", "unconfirmed_transactions") \
-    .option("startingOffsets", "earliest") \
+    .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP) \
+    .option("subscribe", f"{TOPIC_UNCONFIRMED},{TOPIC_CONFIRMED}") \
+    .option("startingOffsets", "latest") \
     .option("failOnDataLoss", "false") \
-    .option("schemaEvolutionMode", "addOrIgnore") \
     .load()
+LOGGER.info("🔗 Subscribed to Kafka topics.")
 
-LOGGER.info("🔗 Connected to Kafka topic: unconfirmed_transactions")
-
-# ✅ Define the correct PySpark schema as a StructType object
-tx_schema = StructType([
+# ========== Unconfirmed Transactions Schema ==========
+unconfirmed_schema = StructType([
     StructField("op", StringType(), True),
     StructField("x", StructType([
         StructField("lock_time", IntegerType(), True),
@@ -84,41 +80,110 @@ tx_schema = StructType([
     ]), True)
 ])
 
-# ✅ Parse Kafka messages (corrected)
-# ✅ Corrected parsing
-messages_df = kafka_df.selectExpr("CAST(value AS STRING) as json_data") \
-    .select(from_json(col("json_data"), tx_schema).alias("data")) \
+# ========== Confirmed Blocks Schema ==========
+confirmed_schema = StructType([
+    StructField("hash", StringType(), True),
+    StructField("ver", IntegerType(), True),
+    StructField("prev_block", StringType(), True),
+    StructField("mrkl_root", StringType(), True),
+    StructField("time", LongType(), True),
+    StructField("bits", IntegerType(), True),
+    StructField("fee", LongType(), True),
+    StructField("nonce", IntegerType(), True),
+    StructField("n_tx", IntegerType(), True),
+    StructField("size", IntegerType(), True),
+    StructField("block_index", LongType(), True),
+    StructField("main_chain", BooleanType(), True),
+    StructField("height", LongType(), True),
+    StructField("weight", LongType(), True),
+    StructField("tx", ArrayType(StringType()), True)
+])
+
+# Parse value as STRING
+raw_values = kafka_df.selectExpr("CAST(value AS STRING) as json_data")
+
+# ========== Routing and Parsing ==========
+unconfirmed_df = raw_values \
+    .filter(col("json_data").contains('"op":"utx"')) \
+    .select(from_json(col("json_data"), unconfirmed_schema).alias("data")) \
+    .filter(col("data").isNotNull()) \
     .select("data.*")
 
+# ========== Confirmed Blocks Parsing with Schema Validation ==========
+INVALID_TOPIC_CONFIRMED = "invalid_confirmed_blocks"
 
-def process_batch(batch_df, batch_id):
-    start_time = datetime.now()
-    LOGGER.info(f"🛠 Processing batch {batch_id}")
+try:
+    confirmed_attempt = raw_values \
+        .filter(col("json_data").contains('"height"')) \
+        .select(from_json(col("json_data"), confirmed_schema).alias("parsed"), col("json_data").alias("raw_json")) \
+        .withColumn("schema_valid", col("parsed").isNotNull())
 
+    confirmed_df = confirmed_attempt \
+        .filter(col("parsed").isNotNull()) \
+        .selectExpr("parsed.*", "schema_valid")
+
+    # Send invalid records to Kafka
+    invalid_confirmed_df = confirmed_attempt \
+        .filter(col("parsed").isNull()) \
+        .selectExpr("CAST(raw_json AS STRING) AS value")
+
+    invalid_query = invalid_confirmed_df.writeStream \
+        .format("kafka") \
+        .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP) \
+        .option("topic", INVALID_TOPIC_CONFIRMED) \
+        .option("checkpointLocation", "/mnt/spark/checkpoints/invalid_confirmed_kafka") \
+        .outputMode("append") \
+        .start()
+
+    LOGGER.info("✅ Parsed confirmed_df with validation; streaming invalid records to Kafka topic.")
+except Exception as e:
+    LOGGER.error("❌ Failed parsing confirmed_df: %s", str(e))
+    LOGGER.error(traceback.format_exc())
+    raise
+
+# ========== Process Batch Logic ==========
+def process_unconfirmed(batch_df, batch_id):
     if batch_df.isEmpty():
-        LOGGER.info("🚫 Empty batch, skipping.")
+        LOGGER.info(f"📭 Skipping empty unconfirmed batch {batch_id}")
         return
-
-    # ✅ Prepare and write to Kafka topic inside Spark job
-    batch_df \
-        .select(to_json(struct("*")).alias("value")) \
+    LOGGER.info(f"🧾 Processing unconfirmed batch {batch_id}")
+    batch_df.select(to_json(struct("*")).alias("value")) \
         .write \
         .format("kafka") \
-        .option("kafka.bootstrap.servers", "kafka-broker.kafka.svc.cluster.local:9092") \
-        .option("topic", TARGET_TOPIC) \
+        .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP) \
+        .option("topic", TARGET_TOPIC_UNCONFIRMED) \
         .save()
 
-    duration = (datetime.now() - start_time).total_seconds()
-    LOGGER.info(f"✅ Batch {batch_id} written to Kafka in {duration:.2f} seconds.")
+def process_confirmed(batch_df, batch_id):
+    if batch_df.isEmpty():
+        LOGGER.info(f"📭 Skipping empty confirmed batch {batch_id}")
+        return
+    LOGGER.info(f"📦 Processing confirmed block batch {batch_id}")
+    batch_df.select(to_json(struct("*")).alias("value")) \
+        .write \
+        .format("kafka") \
+        .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP) \
+        .option("topic", TARGET_TOPIC_CONFIRMED) \
+        .save()
 
-# ✅ Start streaming
-checkpoint_location = "/mnt/spark/checkpoints/kafka_unconfirmed_transactions_reader"
+# ========== Write Streams ==========
+checkpoint_base = "/mnt/spark/checkpoints"
 
-query = messages_df.writeStream \
+query1 = unconfirmed_df.writeStream \
     .outputMode("append") \
-    .foreachBatch(process_batch) \
-    .option("checkpointLocation", checkpoint_location) \
+    .foreachBatch(process_unconfirmed) \
+    .option("checkpointLocation", f"{checkpoint_base}/unconfirmed") \
     .start()
 
-LOGGER.info("🟢 Streaming query started.")
-query.awaitTermination()
+query2 = confirmed_df.writeStream \
+    .outputMode("append") \
+    .foreachBatch(process_confirmed) \
+    .option("checkpointLocation", f"{checkpoint_base}/confirmed") \
+    .start()
+
+LOGGER.info("🟢 Unified stream queries started.")
+
+query1.awaitTermination()
+query2.awaitTermination()
+invalid_query.awaitTermination()
+
