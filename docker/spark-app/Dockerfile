@@ -11,7 +11,9 @@ WORKDIR /opt/app
 RUN mkdir -p /tmp/spark-upload
 
 # Copy the Spark application
-COPY spark_app.py /opt/app/app.py
+COPY spark_app /opt/app/spark_app
+
+ENV PYTHONPATH=/opt/app
 
 # Default command for spark-submit
 CMD ["spark-submit", \
@@ -41,4 +43,4 @@ CMD ["spark-submit", \
      "--conf", "spark.kubernetes.authenticate.caCertFile=/etc/ssl/certs/ca-certificates.crt", \
      "--conf", "spark.kubernetes.authenticate.submission.oauthToken=${K8S_TOKEN}", \
      "--conf", "spark.kubernetes.authenticate.caCertFile=/usr/local/share/ca-certificates/minikube-ca.crt", \
-     "local:///opt/app/app.py"]
+     "local:///opt/app/spark_app/main.py"]

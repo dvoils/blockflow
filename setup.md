@@ -209,6 +209,7 @@ kubectl get pods -n spark
 
 
 
+
 ## Find Tools
 ```bash
 find / -name kafka-topics.sh 2>/dev/null

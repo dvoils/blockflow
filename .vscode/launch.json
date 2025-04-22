@@ -1,0 +1,31 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Debug Current File",
+        "type": "python",
+        "request": "launch",
+        "program": "${file}",
+        "console": "integratedTerminal",
+        "justMyCode": false,
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}/docker/spark-app",
+          "JAVA_HOME": "/usr/lib/jvm/java-17-openjdk-amd64"
+        }
+      },
+      {
+        "name": "Debug Pytest",
+        "type": "python",
+        "request": "launch",
+        "module": "pytest",
+        "cwd": "${workspaceFolder}/docker/spark-app",
+        "args": ["test"],
+        "justMyCode": false,
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}/docker/spark-app",
+          "JAVA_HOME": "/usr/lib/jvm/java-17-openjdk-amd64"
+        }
+      }
+    ]
+  }
+  
