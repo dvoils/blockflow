@@ -192,6 +192,19 @@ kubectl apply -f spark-app-service.yaml
 kubectl get pods -n spark
 ```
 
+## Delete Deployments
+```bash
+kubectl delete deployment spark-streaming-app -n spark
+
+kubectl delete deployment confirmed-blocks-ingest -n kafka
+kubectl delete deployment kafka-broker -n kafka
+kubectl delete deployment zookeeper -n kafka
+kubectl delete deployment ingest-app -n kafka
+kubectl delete deployment spark-app -n kafka
+
+kubectl delete pods --all -n kafka
+kubectl delete pods --all -n spark
+```
 
 # Test kafka
 + These tests are set up to consume only new messages.
