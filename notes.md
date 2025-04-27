@@ -22,7 +22,7 @@ kubectl describe pod spark-streaming-app-7d8f6d56d8-tr8zk -n spark
 kubectl describe node minikube
 
 
-docker run -it --user root spark-with-kafka:3.4.0 bash
+
 docker run -it --user root spark-app:latest bash
 
 

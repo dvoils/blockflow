@@ -84,6 +84,32 @@ kubectl get pods -n kafka
 ```
 
 # Deploy Spark
+## Check Topics
+```bash
+/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-broker.kafka.svc.cluster.local:9092 --list
+```
+
+/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-broker.kafka.svc.cluster.local:9092 --list
+
+
+## Create Topics
+```bash
+/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-broker.kafka.svc.cluster.local:9092 \
+  --create --topic unconfirmed_transactions --partitions 1 --replication-factor 1
+
+/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-broker.kafka.svc.cluster.local:9092 \
+  --create --topic confirmed_blocks --partitions 1 --replication-factor 1
+
+/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-broker.kafka.svc.cluster.local:9092 \
+  --create --topic processed_transactions --partitions 1 --replication-factor 1
+
+/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-broker.kafka.svc.cluster.local:9092 \
+  --create --topic processed_confirmed_blocks --partitions 1 --replication-factor 1
+
+/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-broker.kafka.svc.cluster.local:9092 \
+  --create --topic invalid_confirmed_blocks --partitions 1 --replication-factor 1
+```
+
 ## Create Spark namespace
 ```bash
 kubectl apply -f spark-namespace.yaml
