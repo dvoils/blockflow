@@ -87,10 +87,12 @@ def process_confirmed(batch_df, batch_id):
 
         available_columns = batch_df.columns
         chosen_time_col = None
+        chosen_time_name = None
 
         for candidate in time_candidates:
             if candidate in available_columns:
                 chosen_time_col = col(candidate)
+                chosen_time_name = candidate
                 break
 
         if chosen_time_col is None:
@@ -102,7 +104,7 @@ def process_confirmed(batch_df, batch_id):
             .withColumn("block_bucket", spark_hash("id") % 100)
 
         feature_df = enriched.select(
-            "id", "height", chosen_time_col.alias("time"), "tx_count",
+            "id", "height", chosen_time_name, "tx_count",
             "block_age_seconds", "tx_density", "block_bucket"
         )
 
